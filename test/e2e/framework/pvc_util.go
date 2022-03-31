@@ -39,7 +39,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	ocicore "github.com/oracle/oci-go-sdk/v49/core"
+	ocicore "github.com/oracle/oci-go-sdk/v50/core"
 )
 
 const (
