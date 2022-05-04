@@ -19,6 +19,13 @@ FROM ${CI_IMAGE_REGISTRY}/oci-kube-ci:1.0.5
 ARG COMPONENT
 
 ENV SRC /go/src/github.com/oracle/oci-cloud-controller-manager
+ENV GOVERSION "go1.16"
+
+RUN yum install which -y
+RUN bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
+RUN source /root/.gvm/scripts/gvm
+RUN gvm install $GOVERSION
+RUN gvm use $GOVERSION [--default]
 
 ENV GOPATH /go/
 RUN mkdir -p /go/bin $SRC
