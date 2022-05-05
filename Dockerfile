@@ -14,26 +14,18 @@
 
 ARG CI_IMAGE_REGISTRY
 
-FROM ${CI_IMAGE_REGISTRY}/oci-kube-ci:1.0.5
+FROM ${CI_IMAGE_REGISTRY}/oci-kube-ci:1.0.6-test
 
 ARG COMPONENT
 
 ENV SRC /go/src/github.com/oracle/oci-cloud-controller-manager
-ENV GOVERSION "go1.16"
-
-RUN yum install which -y
-RUN yum install bison -y
-RUN curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer -o /bin/gvm-installer
-RUN sh /bin/gvm-installer
-#RUN echo "source /root/.gvm/scripts/gvm" >> /etc/bashrc
-RUN source /root/.gvm/scripts/gvm && gvm install $GOVERSION
 
 ENV GOPATH /go/
 RUN mkdir -p /go/bin $SRC
 ADD . $SRC
 WORKDIR $SRC
 
-RUN source /root/.gvm/scripts/gvm && gvm use $GOVERSION && COMPONENT=${COMPONENT} make clean build
+RUN COMPONENT=${COMPONENT} make clean build
 
 FROM oraclelinux:7-slim
 
