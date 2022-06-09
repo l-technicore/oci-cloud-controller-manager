@@ -21,30 +21,34 @@ import (
 
 //CSIOptions structure which contains flag values
 type CSIOptions struct {
-	Master                  string
-	Kubeconfig              string
-	CsiAddress              string
-	Endpoint                string
-	VolumeNamePrefix        string
-	VolumeNameUUIDLength    int
-	ShowVersion             bool
-	RetryIntervalStart      time.Duration
-	RetryIntervalMax        time.Duration
-	WorkerThreads           uint
-	OperationTimeout        time.Duration
-	EnableLeaderElection    bool
-	LeaderElectionType      string
-	LeaderElectionNamespace string
-	StrictTopology          bool
-	Resync                  time.Duration
-	Timeout                 time.Duration
-	FeatureGates            map[string]bool
-	FinalizerThreads        uint
-	MetricsAddress          string
-	MetricsPath             string
-	ExtraCreateMetadata     bool
-	ReconcileSync           time.Duration
-	EnableResizer           bool
+	Master                    string
+	Kubeconfig                string
+	CsiAddress                string
+	Endpoint                  string
+	VolumeNamePrefix          string
+	VolumeNameUUIDLength      int
+	ShowVersion               bool
+	RetryIntervalStart        time.Duration
+	RetryIntervalMax          time.Duration
+	WorkerThreads             uint
+	OperationTimeout          time.Duration
+	EnableLeaderElection      bool
+	LeaderElectionType        string
+	LeaderElectionNamespace   string
+	StrictTopology            bool
+	ImmediateTopology         bool
+	Resync                    time.Duration
+	Timeout                   time.Duration
+	FeatureGates              map[string]bool
+	FinalizerThreads          uint
+	MetricsAddress            string
+	HttpEndpoint              string
+	MetricsPath               string
+	ExtraCreateMetadata       bool
+	ReconcileSync             time.Duration
+	EnableResizer             bool
+	ControllerPublishReadOnly bool
+	DefaultFSType             string
 }
 
 //NewCSIOptions initializes the flag
@@ -65,14 +69,19 @@ func NewCSIOptions() *CSIOptions {
 		LeaderElectionType:      *flag.String("csi-leader-election-type", "endpoints", "the type of leader election, options are 'endpoints' (default) or 'leases' (strongly recommended). The 'endpoints' option is deprecated in favor of 'leases'."),
 		LeaderElectionNamespace: *flag.String("csi-leader-election-namespace", "", "Namespace where the leader election resource lives. Defaults to the pod namespace if not set."),
 		StrictTopology:          *flag.Bool("csi-strict-topology", false, "Passes only selected node topology to CreateVolume Request, unlike default behavior of passing aggregated cluster topologies that match with topology keys of the selected node."),
+		ImmediateTopology:       *flag.Bool("csi-immediate-topology", false, "Passes only selected node topology to CreateVolume Request, unlike default behavior of passing aggregated cluster topologies that match with topology keys of the selected node."),
 		Resync:                  *flag.Duration("csi-resync", 10*time.Minute, "Resync interval of the controller."),
 		Timeout:                 *flag.Duration("csi-timeout", 15*time.Second, "Timeout for waiting for attaching or detaching the volume."),
 		FinalizerThreads:        *flag.Uint("cloning-protection-threads", 1, "Number of simultaniously running threads, handling cloning finalizer removal"),
-		MetricsAddress:          *flag.String("metrics-address", "", "The TCP network address where the prometheus metrics endpoint will listen (example: `:8080`). The default is empty string, which means metrics endpoint is disabled."),
-		MetricsPath:             *flag.String("metrics-path", "/metrics", "The HTTP path where prometheus metrics will be exposed. Default is `/metrics`."),
-		ExtraCreateMetadata:     *flag.Bool("extra-create-metadata", false, "If set, add pv/pvc metadata to plugin create requests as parameters."),
-		ReconcileSync:           *flag.Duration("reconcile-sync", 1*time.Minute, "Resync interval of the VolumeAttachment reconciler."),
-		EnableResizer:           *flag.Bool("csi-bv-expansion-enabled", false, "Enables go routine csi-resizer."),
+		//MetricsAddress:            *flag.String("metrics-address", "", "The TCP network address where the prometheus metrics endpoint will listen (example: `:8080`). The default is empty string, which means metrics endpoint is disabled."),
+		MetricsAddress:            *flag.String("metrics-address", "", "(deprecated) The TCP network address where the prometheus metrics endpoint will listen (example: `:8080`). The default is empty string, which means metrics endpoint is disabled. Only one of `--metrics-address` and `--http-endpoint` can be set."),
+		HttpEndpoint:              *flag.String("http-endpoint", "", "The TCP network address where the HTTP server for diagnostics, including metrics and leader election health check, will listen (example: `:8080`). The default is empty string, which means the server is disabled. Only one of `--metrics-address` and `--http-endpoint` can be set."),
+		MetricsPath:               *flag.String("metrics-path", "/metrics", "The HTTP path where prometheus metrics will be exposed. Default is `/metrics`."),
+		ExtraCreateMetadata:       *flag.Bool("extra-create-metadata", false, "If set, add pv/pvc metadata to plugin create requests as parameters."),
+		ReconcileSync:             *flag.Duration("reconcile-sync", 1*time.Minute, "Resync interval of the VolumeAttachment reconciler."),
+		EnableResizer:             *flag.Bool("csi-bv-expansion-enabled", false, "Enables go routine csi-resizer."),
+		ControllerPublishReadOnly: *flag.Bool("csi-controller-publish-readonly", false, "If the request only has one accessmode and if its ROX, set readonly to true."),
+		DefaultFSType:             *flag.String("default-fstype", "ext4", "Default File System Type."),
 	}
 	return &csioptions
 }
