@@ -83,12 +83,6 @@ var (
 	nodeDeployment              *ctrl.NodeDeployment
 )
 
-//Todo :- Remove the following
-type leaderElection interface {
-	Run() error
-	WithNamespace(namespace string)
-}
-
 //StartCSIProvisioner main function to start CSI Controller Provisioner
 func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 	var config *rest.Config
@@ -186,14 +180,7 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 	// Prepare http endpoint for metrics + leader election healthz
 	mux := http.NewServeMux()
 	gatherers := prometheus.Gatherers{
-		// For workqueue and leader election metrics, set up via the anonymous imports of:
-		// https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/component-base/metrics/prometheus/workqueue/metrics.go
-		// https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/component-base/metrics/prometheus/clientgo/leaderelection/metrics.go
-		//
-		// Also to happens to include Go runtime and process metrics:
-		// https://github.com/kubernetes/kubernetes/blob/9780d88cb6a4b5b067256ecb4abf56892093ee87/staging/src/k8s.io/component-base/metrics/legacyregistry/registry.go#L46-L49
 		legacyregistry.DefaultGatherer,
-		// For CSI operations.
 		metricsManager.GetRegistry(),
 	}
 
@@ -225,23 +212,6 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		klog.Info("CSI driver does not support PUBLISH_UNPUBLISH_VOLUME, not watching VolumeAttachments")
 	}
 
-	//Todo Node Deployment
-
-	/*if *enableNodeDeployment {
-		nodeDeployment = &ctrl.NodeDeployment{
-			NodeName:         node,
-			ClaimInformer:    factory.Core().V1().PersistentVolumeClaims(),
-			ImmediateBinding: *nodeDeploymentImmediateBinding,
-			BaseDelay:        *nodeDeploymentBaseDelay,
-			MaxDelay:         *nodeDeploymentMaxDelay,
-		}
-		nodeInfo, err := ctrl.GetNodeInfo(grpcClient, csioptions.operationTimeout)
-		if err != nil {
-			klog.Fatalf("Failed to get node info from CSI driver: %v", err)
-		}
-		nodeDeployment.NodeInfo = *nodeInfo
-	}
-	*/
 	var csiNodeLister storagelistersv1.CSINodeLister
 	var nodeLister v1.NodeLister
 	if ctrl.SupportsTopology(pluginCapabilities) {
@@ -329,7 +299,6 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		*preventVolumeModeConversion,
 	)
 
-	//Todo Publishing storage capacity information uses its own client
 	var capacityController *capacity.Controller
 	if *enableCapacity {
 		// Publishing storage capacity information uses its own client

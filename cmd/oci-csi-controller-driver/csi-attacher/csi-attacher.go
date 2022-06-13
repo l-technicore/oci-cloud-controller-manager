@@ -127,8 +127,6 @@ func StartCSIAttacher(csioptions csioptions.CSIOptions) {
 			}
 		}()
 	}
-	//metricsManager.SetDriverName(csiAttacher)
-	//metricsManager.StartMetricsEndpoint(csioptions.MetricsAddress, csioptions.MetricsPath)
 
 	supportsService, err := supportsPluginControllerService(ctx, csiConn)
 	if err != nil {
