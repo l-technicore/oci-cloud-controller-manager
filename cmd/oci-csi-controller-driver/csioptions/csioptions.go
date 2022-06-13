@@ -69,7 +69,7 @@ func NewCSIOptions() *CSIOptions {
 		LeaderElectionType:      *flag.String("csi-leader-election-type", "endpoints", "the type of leader election, options are 'endpoints' (default) or 'leases' (strongly recommended). The 'endpoints' option is deprecated in favor of 'leases'."),
 		LeaderElectionNamespace: *flag.String("csi-leader-election-namespace", "", "Namespace where the leader election resource lives. Defaults to the pod namespace if not set."),
 		StrictTopology:          *flag.Bool("csi-strict-topology", false, "Passes only selected node topology to CreateVolume Request, unlike default behavior of passing aggregated cluster topologies that match with topology keys of the selected node."),
-		ImmediateTopology:       *flag.Bool("csi-immediate-topology", false, "Passes only selected node topology to CreateVolume Request, unlike default behavior of passing aggregated cluster topologies that match with topology keys of the selected node."),
+		ImmediateTopology:       *flag.Bool("csi-immediate-topology", true, "Immediate binding: pass aggregated cluster topologies for all nodes where the CSI driver is available (enabled, the default) or no topology requirements (if disabled)"),
 		Resync:                  *flag.Duration("csi-resync", 10*time.Minute, "Resync interval of the controller."),
 		Timeout:                 *flag.Duration("csi-timeout", 15*time.Second, "Timeout for waiting for attaching or detaching the volume."),
 		FinalizerThreads:        *flag.Uint("cloning-protection-threads", 1, "Number of simultaniously running threads, handling cloning finalizer removal"),

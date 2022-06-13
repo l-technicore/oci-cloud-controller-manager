@@ -71,7 +71,7 @@ var (
 	kubeAPICapacityBurst = flag.Int("kube-api-capacity-burst", 5, "Burst to use for storage capacity updates while communicating with the kubernetes apiserver. Defaults to 5.")
 	enableNodeDeployment = flag.Bool("node-deployment", false, "Enables deploying the external-provisioner together with a CSI driver on nodes to manage node-local volumes.")
 	enableCapacity       = flag.Bool("enable-capacity", false, "This enables producing CSIStorageCapacity objects with capacity information from the driver's GetCapacity call.")
-	/*capacityMode   = func() *capacity.DeploymentMode {
+	/*	capacityMode         = func() *capacity.DeploymentMode {
 		mode := capacity.DeploymentModeUnset
 		flag.Var(&mode, "capacity-controller-deployment-mode", "Setting this enables producing CSIStorageCapacity objects with capacity information from the driver's GetCapacity call. 'central' is currently the only supported mode. Use it when there is just one active provisioner in the cluster.")
 		return &mode
@@ -182,7 +182,6 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 	klog.V(2).Infof("Detected CSI driver %s", provisionerName)
 	metricsManager.SetDriverName(provisionerName)
 
-	//Todo :- translator IsMigratedCSIDriverByName
 	//metricsManager.StartMetricsEndpoint(csioptions.MetricsAddress, csioptions.MetricsPath)
 	// Prepare http endpoint for metrics + leader election healthz
 	mux := http.NewServeMux()
@@ -227,7 +226,7 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 	}
 
 	//Todo Node Deployment
-	/*var nodeDeployment *ctrl.NodeDeployment
+
 	/*if *enableNodeDeployment {
 		nodeDeployment = &ctrl.NodeDeployment{
 			NodeName:         node,
@@ -236,13 +235,13 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 			BaseDelay:        *nodeDeploymentBaseDelay,
 			MaxDelay:         *nodeDeploymentMaxDelay,
 		}
-		nodeInfo, err := ctrl.GetNodeInfo(grpcClient, *operationTimeout)
+		nodeInfo, err := ctrl.GetNodeInfo(grpcClient, csioptions.operationTimeout)
 		if err != nil {
 			klog.Fatalf("Failed to get node info from CSI driver: %v", err)
 		}
 		nodeDeployment.NodeInfo = *nodeInfo
-	}*/
-
+	}
+	*/
 	var csiNodeLister storagelistersv1.CSINodeLister
 	var nodeLister v1.NodeLister
 	if ctrl.SupportsTopology(pluginCapabilities) {
@@ -266,7 +265,7 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		controller.CreateProvisionedPVLimiter(workqueue.DefaultControllerRateLimiter()),
 		controller.ClaimsInformer(claimInformer),
 	}
-
+	//Todo :- translator IsMigratedCSIDriverByName
 	translator := csitranslationlib.New()
 
 	supportsMigrationFromInTreePluginName := ""
@@ -276,6 +275,27 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 			klog.Fatalf("Failed to get InTree plugin name for migrated CSI plugin %s: %v", provisionerName, err)
 		}
 		klog.V(2).Infof("Supports migration from in-tree plugin: %s", supportsMigrationFromInTreePluginName)
+
+		// Create a new connection with the metrics manager with migrated label
+		metricsManager = metrics.NewCSIMetricsManagerWithOptions(provisionerName,
+			// Will be provided via default gatherer.
+			metrics.WithProcessStartTime(false),
+			metrics.WithMigration())
+		migratedGrpcClient, err := ctrl.Connect(*csiEndpoint, metricsManager)
+		if err != nil {
+			klog.Error(err.Error())
+			os.Exit(1)
+		}
+		grpcClient.Close()
+		grpcClient = migratedGrpcClient
+
+		err = ctrl.Probe(grpcClient, csioptions.OperationTimeout)
+		if err != nil {
+			klog.Error(err.Error())
+			os.Exit(1)
+		}
+	}
+	if supportsMigrationFromInTreePluginName != "" {
 		provisionerOptions = append(provisionerOptions, controller.AdditionalProvisionerNames([]string{supportsMigrationFromInTreePluginName}))
 	}
 
@@ -304,7 +324,7 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		vaLister,
 		extraCreateMetadata,
 		defaultFSType,
-		nil,
+		nodeDeployment,
 		csioptions.ControllerPublishReadOnly,
 		*preventVolumeModeConversion,
 	)
