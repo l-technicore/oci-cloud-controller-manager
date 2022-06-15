@@ -235,7 +235,7 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		controller.CreateProvisionedPVLimiter(workqueue.DefaultControllerRateLimiter()),
 		controller.ClaimsInformer(claimInformer),
 	}
-	//Todo :- translator IsMigratedCSIDriverByName
+
 	translator := csitranslationlib.New()
 
 	supportsMigrationFromInTreePluginName := ""
@@ -298,7 +298,7 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		csioptions.ControllerPublishReadOnly,
 		*preventVolumeModeConversion,
 	)
-
+	klog.Infof("enable capacity %s", *enableCapacity)
 	var capacityController *capacity.Controller
 	if *enableCapacity {
 		// Publishing storage capacity information uses its own client
@@ -438,7 +438,7 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		claimQueue,
 		controllerCapabilities,
 	)
-
+	klog.Infof("HTTP server addr %s", addr)
 	// Start HTTP server, regardless whether we are the leader or not.
 	if addr != "" {
 		// To collect metrics data from the metric handler itself, we
@@ -487,8 +487,9 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		provisionController.Run(ctx)
 	}
 
+	klog.Infof("csioptions.EnableLeaderElection %s", csioptions.EnableLeaderElection)
 	if !csioptions.EnableLeaderElection {
-		run(context.TODO())
+		run(ctx)
 	} else {
 		// this lock name pattern is also copied from sigs.k8s.io/sig-storage-lib-external-provisioner/v6/controller
 		// to preserve backwards compatibility
@@ -501,6 +502,10 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		}
 
 		le := leaderelection.NewLeaderElection(leClientset, lockName, run)
+
+		if csioptions.HttpEndpoint != "" {
+			le.PrepareHealthCheck(mux, leaderelection.DefaultHealthCheckTimeout)
+		}
 
 		if csioptions.LeaderElectionNamespace != "" {
 			le.WithNamespace(csioptions.LeaderElectionNamespace)
