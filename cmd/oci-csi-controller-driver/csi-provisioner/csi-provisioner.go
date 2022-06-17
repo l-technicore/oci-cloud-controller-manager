@@ -298,7 +298,7 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		csioptions.ControllerPublishReadOnly,
 		*preventVolumeModeConversion,
 	)
-	klog.Infof("enable capacity %s", *enableCapacity)
+
 	var capacityController *capacity.Controller
 	if *enableCapacity {
 		// Publishing storage capacity information uses its own client
@@ -487,7 +487,6 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 		provisionController.Run(ctx)
 	}
 
-	klog.Infof("csioptions.EnableLeaderElection %s", csioptions.EnableLeaderElection)
 	if !csioptions.EnableLeaderElection {
 		run(ctx)
 	} else {
@@ -511,6 +510,7 @@ func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 			le.WithNamespace(csioptions.LeaderElectionNamespace)
 		}
 
+		le.WithIdentity(identity)
 		if err := le.Run(); err != nil {
 			klog.Fatalf("failed to initialize leader election: %v", err)
 		}
