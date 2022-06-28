@@ -23,7 +23,7 @@ import (
 
 	"github.com/oracle/oci-cloud-controller-manager/api/v1beta1"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
-	"github.com/oracle/oci-go-sdk/v49/core"
+	"github.com/oracle/oci-go-sdk/v50/core"
 )
 
 func TestComputeAveragesByReturnCode(t *testing.T) {
