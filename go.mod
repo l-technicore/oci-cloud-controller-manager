@@ -32,12 +32,17 @@ replace (
 	k8s.io/mount-utils => k8s.io/mount-utils v0.24.1
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.24.1
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.24.1
+	sigs.k8s.io/sig-storage-lib-external-provisioner/v8 => sigs.k8s.io/sig-storage-lib-external-provisioner/v8 v8.0.0-20220531195724-a4ce2c1d2e52 // Master Branch to support Migrated leader election to lease API https://github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/commit/a4ce2c1d2e5221e98de41dfd00bdc4b041a40b3f
 )
 
 require (
 	github.com/container-storage-interface/spec v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/kubernetes-csi/csi-lib-utils v0.11.0
+	github.com/kubernetes-csi/external-attacher v0.0.0-20220607140055-8d337281e065 //v3.5.0
+	github.com/kubernetes-csi/external-provisioner v0.0.0-20220610061345-7f08effe3de5 // v3.2.0
+	github.com/kubernetes-csi/external-resizer v0.0.0-20220615155319-a76b4d2afe86 // v1.5.0
+	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.0.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	github.com/oracle/oci-go-sdk/v50 v50.1.0
@@ -54,18 +59,20 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.24.1
 	k8s.io/apimachinery v0.24.1
-	k8s.io/apiserver v0.24.1 // indirect
+	k8s.io/apiserver v0.24.1
 	k8s.io/client-go v0.24.1
 	k8s.io/cloud-provider v0.24.1
 	k8s.io/component-base v0.24.1
 	k8s.io/component-helpers v0.24.1
+	k8s.io/csi-translation-lib v0.24.1
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.60.1
 	k8s.io/kubelet v0.24.1 // indirect
 	k8s.io/kubernetes v1.24.1
 	k8s.io/mount-utils v0.24.1
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
-	sigs.k8s.io/sig-storage-lib-external-provisioner/v6 v6.3.0
+	sigs.k8s.io/controller-runtime v0.11.2 // indirect
+	sigs.k8s.io/sig-storage-lib-external-provisioner/v8 v8.0.0
 )
 
 require (
@@ -138,7 +145,6 @@ require (
 	go.opentelemetry.io/otel/trace v0.20.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.7.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
-	go.uber.org/goleak v1.1.12 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
@@ -156,6 +162,7 @@ require (
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	k8s.io/apiextensions-apiserver v0.24.1 // indirect
 	k8s.io/controller-manager v0.24.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220401212409-b28bf2818661 // indirect
 	k8s.io/kube-scheduler v0.0.0 // indirect
