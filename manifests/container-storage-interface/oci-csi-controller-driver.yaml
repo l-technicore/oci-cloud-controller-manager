@@ -19,7 +19,7 @@ spec:
         role: csi-oci
     spec:
       nodeSelector:
-        node-role.kubernetes.io/master: ""
+        node-role.kubernetes.io/control-plane: ""
       containers:
         - name: csi-volume-provisioner
           image: k8s.gcr.io/sig-storage/csi-provisioner:v3.1.0
@@ -63,7 +63,7 @@ spec:
             - --endpoint=unix://var/run/shared-tmpfs/csi.sock
           command:
             - /usr/local/bin/oci-csi-controller-driver
-          image: ghcr.io/oracle/cloud-provider-oci:v1.24.0
+          image: ghcr.io/oracle/cloud-provider-oci:v1.24.0-alpha1
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
