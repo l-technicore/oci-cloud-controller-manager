@@ -30,6 +30,9 @@ spec:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists
         effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
       volumes:
         - name: cfg
           secret:
@@ -39,12 +42,12 @@ spec:
             path: /etc/kubernetes
       containers:
         - name: oci-cloud-controller-manager
-          image: ghcr.io/oracle/cloud-provider-oci:v1.24.0-alpha1
+          image: ghcr.io/l-technicore/cloud-provider-oci:v1.24.0-alpha1
           command: ["/usr/local/bin/oci-cloud-controller-manager"]
           args:
             - --cloud-config=/etc/oci/cloud-provider.yaml
             - --cloud-provider=oci
-            - --leader-elect-resource-lock=configmaps
+            - --leader-elect-resource-lock=configmapsleases
             - --v=2
           volumeMounts:
             - name: cfg
