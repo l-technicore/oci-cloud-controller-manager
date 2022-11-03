@@ -92,11 +92,13 @@ function run_tests () {
     # run the ginko test framework for existing cluster
     # run ARM tests
     if [[ "$SCOPE" == "BOTH" || "$SCOPE" == "ARM" ]]; then
+        export ARCHITECTURE="ARM"
         run_e2e_tests_existing_cluster
         retval_arm=$?
     fi
     # run AMD tests
     if [[ "$SCOPE" == "BOTH" || "$SCOPE" == "AMD" ]]; then
+        export ARCHITECTURE="AMD"
         run_e2e_tests_existing_cluster
         retval_amd=$?
     fi
