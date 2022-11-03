@@ -81,7 +81,7 @@ build-dirs:
 .PHONY: build
 build: build-dirs
 	@for component in $(COMPONENT); do \
-		GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build -o dist/$$component -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" ./cmd/$$component ; \
+		GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=1 go build -o dist/$$component -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" ./cmd/$$component ; \
     done
 
 .PHONY: manifests
@@ -159,7 +159,7 @@ push: image
 .PHONY: build
 build-arm-all: build-dirs
 	@for component in $(COMPONENT); do \
-    	GOOS=$(GOOS) GOARCH=arm64 CGO_ENABLED=0 go build -o dist/arm/$$component -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" ./cmd/$$component ; \
+    	GOOS=$(GOOS) GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -o dist/arm/$$component -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" ./cmd/$$component ; \
     done
 
 .PHONY: docker-push
