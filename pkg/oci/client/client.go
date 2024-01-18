@@ -363,7 +363,7 @@ func (c *client) FSS() FileStorageInterface {
 func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.BaseClient) error {
 	httpClient := baseClient.HTTPClient.(*http.Client)
 
-	var transport *http.Transport
+	var transport interface{}
 	if httpClient.Transport == nil {
 		transport = &http.Transport{
 			DialContext: (&net.Dialer{
@@ -377,7 +377,12 @@ func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.Base
 			ExpectContinueTimeout: 1 * time.Second,
 		}
 	} else {
-		transport = httpClient.Transport.(*http.Transport)
+		switch httpClient.Transport.(type) {
+		case *http.Transport:
+			transport = httpClient.Transport.(*http.Transport)
+		case *common.OciHTTPTransportWrapper:
+			transport = httpClient.Transport.(*common.OciHTTPTransportWrapper)
+		}
 	}
 
 	ociProxy := os.Getenv("OCI_PROXY")
@@ -386,8 +391,14 @@ func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.Base
 		if err != nil {
 			return errors.Wrapf(err, "failed to parse OCI proxy url: %s", ociProxy)
 		}
-		transport.Proxy = func(req *http.Request) (*url.URL, error) {
-			return proxyURL, nil
+		switch httpClient.Transport.(type) {
+		case *http.Transport:
+			transport.(*http.Transport).Proxy = func(req *http.Request) (*url.URL, error) {
+				return proxyURL, nil
+			}
+		case *common.OciHTTPTransportWrapper:
+			os.Setenv("HTTPS_PROXY", ociProxy)
+			os.Setenv("HTTP_PROXY", ociProxy)
 		}
 	}
 
@@ -403,9 +414,19 @@ func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.Base
 		if !ok {
 			return errors.Wrapf(err, "failed to parse root certificate: %s", trustedCACertPath)
 		}
-		transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
+		switch httpClient.Transport.(type) {
+		case *http.Transport:
+			transport.(*http.Transport).TLSClientConfig = &tls.Config{RootCAs: caCertPool}
+		case *common.OciHTTPTransportWrapper:
+			os.Setenv("OCI_DEFAULT_CERTS_PATH", trustedCACertPath)
+		}
 	}
 
-	httpClient.Transport = transport
+	switch httpClient.Transport.(type) {
+	case *http.Transport:
+		httpClient.Transport = transport.(*http.Transport)
+	case *common.OciHTTPTransportWrapper:
+		httpClient.Transport = transport.(*common.OciHTTPTransportWrapper)
+	}
 	return nil
 }
