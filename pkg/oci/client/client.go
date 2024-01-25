@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -457,27 +456,6 @@ func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.Base
 		httpClient.Transport = transport.(*http.Transport)
 	case *common.OciHTTPTransportWrapper:
 		httpClient.Transport = transport.(*common.OciHTTPTransportWrapper)
-		// testing
-		tls, _ := transport.(*common.OciHTTPTransportWrapper).TLSConfigProvider.NewOrDefault()
-		fmt.Println("TLS: ", tls.RootCAs)
-
-		httpRoundTripper, err := transport.(*common.OciHTTPTransportWrapper).TransportTemplate.NewOrDefault(tls)
-		if err != nil {
-			fmt.Println("Error: ", err.Error())
-		}
-		url, err := url.Parse("http://www.google.com/search?q=hi")
-		if err != nil {
-			fmt.Println("Error: ", err.Error())
-		} else {
-			fmt.Println("URL: ", url)
-		}
-		res, err := httpRoundTripper.(*http.Transport).Proxy(&http.Request{URL: url})
-		if err != nil {
-			fmt.Println("Error: ", err.Error())
-		}
-		if res != nil {
-			fmt.Println("Proxy: ", res.Host)
-		}
 	}
 	return nil
 }
