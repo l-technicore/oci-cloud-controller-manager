@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -168,8 +169,41 @@ type client struct {
 	logger      *zap.SugaredLogger
 }
 
+func init() {
+
+	ociProxy := os.Getenv("OCI_PROXY")
+	if ociProxy != "" {
+		proxyURL, err := url.Parse(ociProxy)
+		if err == nil {
+			if proxyURL.Scheme == "https" {
+				os.Setenv("HTTPS_PROXY", ociProxy)
+			} else {
+				os.Setenv("HTTP_PROXY", ociProxy)
+			}
+		}
+	}
+
+	trustedCACertPath := os.Getenv("TRUSTED_CA_CERT_PATH")
+	if trustedCACertPath != "" {
+		os.Setenv("OCI_DEFAULT_CERTS_PATH", trustedCACertPath)
+	}
+}
+
 // New constructs an OCI API client.
 func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimiter *RateLimiter) (Interface, error) {
+
+	ociProxy := os.Getenv("OCI_PROXY")
+	if ociProxy != "" {
+		if _, err := url.Parse(ociProxy); err != nil {
+			return nil, errors.Wrapf(err, "failed to parse OCI proxy url: %s", ociProxy)
+		}
+	}
+
+	trustedCACertPath := os.Getenv("TRUSTED_CA_CERT_PATH")
+	if trustedCACertPath != "" {
+		logger.With("path", trustedCACertPath).Infof("Configuring OCI client with a new trusted ca")
+	}
+
 	compute, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewComputeClientWithConfigurationProvider")
@@ -378,6 +412,7 @@ func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.Base
 		}
 	} else {
 		switch httpClient.Transport.(type) {
+		// OCI Go-SDK used OciHTTPTransportWrapper by default now, keeping this for backward compatibility if cherry-picked to older versions of CCM
 		case *http.Transport:
 			transport = httpClient.Transport.(*http.Transport)
 		case *common.OciHTTPTransportWrapper:
@@ -396,9 +431,6 @@ func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.Base
 			transport.(*http.Transport).Proxy = func(req *http.Request) (*url.URL, error) {
 				return proxyURL, nil
 			}
-		case *common.OciHTTPTransportWrapper:
-			os.Setenv("HTTPS_PROXY", ociProxy)
-			os.Setenv("HTTP_PROXY", ociProxy)
 		}
 	}
 
@@ -417,8 +449,6 @@ func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.Base
 		switch httpClient.Transport.(type) {
 		case *http.Transport:
 			transport.(*http.Transport).TLSClientConfig = &tls.Config{RootCAs: caCertPool}
-		case *common.OciHTTPTransportWrapper:
-			os.Setenv("OCI_DEFAULT_CERTS_PATH", trustedCACertPath)
 		}
 	}
 
@@ -427,6 +457,27 @@ func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.Base
 		httpClient.Transport = transport.(*http.Transport)
 	case *common.OciHTTPTransportWrapper:
 		httpClient.Transport = transport.(*common.OciHTTPTransportWrapper)
+		// testing
+		tls, _ := transport.(*common.OciHTTPTransportWrapper).TLSConfigProvider.NewOrDefault()
+		fmt.Println("TLS: ", tls.RootCAs)
+
+		httpRoundTripper, err := transport.(*common.OciHTTPTransportWrapper).TransportTemplate.NewOrDefault(tls)
+		if err != nil {
+			fmt.Println("Error: ", err.Error())
+		}
+		url, err := url.Parse("http://www.google.com/search?q=hi")
+		if err != nil {
+			fmt.Println("Error: ", err.Error())
+		} else {
+			fmt.Println("URL: ", url)
+		}
+		res, err := httpRoundTripper.(*http.Transport).Proxy(&http.Request{URL: url})
+		if err != nil {
+			fmt.Println("Error: ", err.Error())
+		}
+		if res != nil {
+			fmt.Println("Proxy: ", res.Host)
+		}
 	}
 	return nil
 }
