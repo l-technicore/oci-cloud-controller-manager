@@ -4,7 +4,6 @@
 implementation (or out-of-tree cloud-provider) for [Oracle Cloud
 Infrastucture][1] (OCI).
 
-[![wercker status](https://app.wercker.com/status/17a52304e0309d138ad41f7ae9f9ea49/s/master "wercker status")](https://app.wercker.com/project/byKey/17a52304e0309d138ad41f7ae9f9ea49)
 [![Go Report Card](https://goreportcard.com/badge/github.com/oracle/oci-cloud-controller-manager)](https://goreportcard.com/report/github.com/oracle/oci-cloud-controller-manager)
 
 ## Introduction
@@ -22,14 +21,24 @@ cloud-provider specific code out of the Kubernetes codebase.
 
 ## Compatibility matrix
 
-|           | Min Kubernetes Version      | Max Kubernetes Version       |
-|-----------|-----------------------------|------------------------------|
-| \>=v 0.11 | v1.16                       | v1.18                        |
-| \>=v 0.12 | v1.18                       | v1.21                        |
-| \>=v 0.13 | v1.19                       | v1.21                        |
+|           | Min Kubernetes Version | Max Kubernetes Version |
+|-----------|------------------------|------------------------|
+| \>=v 0.11 | v1.16                  | v1.18                  |
+| \>=v 0.12 | v1.18                  | v1.21                  |
+| \>=v 0.13 | v1.19                  | v1.21                  |
+| v1.19.12  | v1.19                  | v1.21                  |
+| v1.22.0   | v1.22                  | -                      |
+| v1.23.0   | v1.23                  | -                      |
+| v1.24.2   | v1.24                  | -                      |
+| v1.25.2   | v1.25                  | -                      |
+| v1.26.2   | v1.26                  | -                      |
+| v1.27.1   | v1.27                  | -                      |
+
+
+
 
 Note: 
-Versions older than v0.13.0 are no longer supported, new features / bug fixes will be available in v0.13.0 and later. 
+Versions older than v1.25.2 are no longer supported, new features / bug fixes will be available in v1.25.2 and later. 
 
 ## Implementation
  Currently `oci-cloud-controller-manager` implements:
@@ -160,6 +169,12 @@ details.
 
 Oracle gratefully acknowledges the contributions to this project that have been made
 by the community.
+
+## Upcoming Releases
+
+| Release               | Expected Release Date |
+|-----------------------|-----------------------|
+| Support for K8s v1.24 | August 2022           |
 
 ## License
 

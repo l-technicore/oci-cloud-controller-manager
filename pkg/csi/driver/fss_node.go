@@ -1,26 +1,46 @@
+// Copyright 2019 Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package driver
 
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	kubeAPI "k8s.io/api/core/v1"
+	"k8s.io/mount-utils"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
+	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 )
 
 const (
-	mountPath                       = "mount"
-	FipsEnabled                     = "1"
+	mountPath                  = "mount"
+	FipsEnabled                = "1"
+	fssUnmountSemaphoreTimeout = time.Second * 30
 )
+
+var fssUnmountSemaphore = semaphore.NewWeighted(int64(4))
 
 // NodeStageVolume mounts the volume to a staging path on the node.
 func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
@@ -32,43 +52,48 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
 	}
 
-	mountTargetIP, exportPath  := validateVolumeId(req.VolumeId)
+	volumeHandler := csi_util.ValidateFssId(req.VolumeId)
+	_, mountTargetIP, exportPath := volumeHandler.FilesystemOcid, volumeHandler.MountTargetIPAddress, volumeHandler.FsExportPath
 
-	if mountTargetIP == "" || exportPath == ""{
+	if mountTargetIP == "" || exportPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId)
+	logger := d.logger.With("volumeID", req.VolumeId)
 	logger.Debugf("volume context: %v", req.VolumeContext)
 
 	var fsType = ""
 
 	accessType := req.VolumeCapability.GetMount()
-
-	if accessType != nil && accessType.FsType != "" {
-		fsType = accessType.FsType
+	var options []string
+	if accessType != nil {
+		if accessType.MountFlags != nil {
+			options = accessType.MountFlags
+		}
+		if accessType.FsType != "" {
+			fsType = accessType.FsType
+		}
 	}
 	encryptInTransit, err := isInTransitEncryptionEnabled(req.VolumeContext)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "EncryptInTransit must be a boolean value")
 	}
 
-	mounter := mount.New(logger, mountPath)
+	mounter := mount.New(mountPath)
 
-	var options []string
 	if encryptInTransit {
-		isPackageInstalled, err := mount.IsInTransitEncryptionPackageInstalled(mounter)
+		isPackageInstalled, err := csi_util.IsInTransitEncryptionPackageInstalled()
 		if err != nil {
 			logger.With(zap.Error(err)).Error("FSS in-transit encryption Package installation check failed")
 			return nil, status.Error(codes.Internal, "FSS in-transit encryption Package installation check failed")
 		}
 		if !isPackageInstalled {
-			logger.Error("Package %s not installed for in-transit encryption", mount.InTransitEncryptionPackageName)
-			return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("Package %s not installed for in-transit encryption", mount.InTransitEncryptionPackageName))
+			logger.Errorf("Package %s not installed for in-transit encryption", csi_util.InTransitEncryptionPackageName)
+			return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("Package %s not installed for in-transit encryption", csi_util.InTransitEncryptionPackageName))
 		}
 		logger.Debug("In-transit encryption enabled")
 		fsType = "oci-fss"
-		content, err := mount.IsFipsEnabled(mounter)
+		content, err := csi_util.IsFipsEnabled()
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Could not verify if FIPS enabled")
 			return nil, status.Error(codes.Internal, "Could not verify if FIPS enabled")
@@ -91,7 +116,7 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 	mountPoint, err := isMountPoint(mounter, targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logger.With("StagingTargetPath", targetPath).Infof("mount point does not exist")
+			logger.With("StagingTargetPath", targetPath).Infof("Mount point does not pre-exist, creating now.")
 			// k8s v1.20+ will not create the TargetPath directory
 			// https://github.com/kubernetes/kubernetes/pull/88759
 			// if the path exists already (<v1.20) this is a no op
@@ -113,7 +138,12 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 	}
 
 	source := fmt.Sprintf("%s:%s", mountTargetIP, exportPath)
-	err = mounter.Mount(source, targetPath, fsType, options)
+
+	if encryptInTransit {
+		err = disk.MountWithEncrypt(logger, source, targetPath, fsType, options)
+	} else {
+		err = mounter.Mount(source, targetPath, fsType, options)
+	}
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to mount volume to staging target path.")
 		return nil, status.Error(codes.Internal, err.Error())
@@ -141,20 +171,6 @@ func isMountPoint(mounter mount.Interface, path string) (bool, error) {
 	return !ok, nil
 }
 
-func validateVolumeId(id string) (string, string) {
-	volumeHandler := strings.Split(id, ":")
-	const numOfParamsFromVolumeHandle = 3
-	const mountTargetIPAddress = 1
-	const fsExportPath = 2
-	if len(volumeHandler) == numOfParamsFromVolumeHandle {
-		if net.ParseIP(volumeHandler[mountTargetIPAddress]) != nil {
-			return volumeHandler[mountTargetIPAddress], volumeHandler[fsExportPath]
-		}
-		return "", ""
-	}
-	return "", ""
-}
-
 // NodePublishVolume mounts the volume to the target path
 func (d FSSNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	if req.VolumeId == "" {
@@ -169,18 +185,18 @@ func (d FSSNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 		return nil, status.Error(codes.InvalidArgument, "Target Path must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId)
+	logger := d.logger.With("volumeID", req.VolumeId)
 	logger.Debugf("volume context: %v", req.VolumeContext)
 
 	var fsType = ""
 
-	mounter := mount.New(logger, mountPath)
+	mounter := mount.New(mountPath)
 
 	targetPath := req.GetTargetPath()
 	readOnly := req.GetReadonly()
 	// Use mount.IsNotMountPoint because mounter.IsLikelyNotMountPoint can't detect bind mounts
 	isNotMountPoint, err := mount.IsNotMountPoint(mounter, targetPath)
-	if err != nil{
+	if err != nil {
 		if os.IsNotExist(err) {
 			logger.With("TargetPath", targetPath).Infof("mount point does not exist")
 			// k8s v1.20+ will not create the TargetPath directory
@@ -229,14 +245,14 @@ func (d FSSNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 		return nil, status.Error(codes.InvalidArgument, "NodeUnpublishVolume: Target Path must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId, "targetPath", req.TargetPath)
+	logger := d.logger.With("volumeID", req.VolumeId, "targetPath", req.TargetPath)
 
-	mounter := mount.New(logger, mountPath)
+	mounter := mount.New(mountPath)
 	targetPath := req.GetTargetPath()
 
 	// Use mount.IsNotMountPoint because mounter.IsLikelyNotMountPoint can't detect bind mounts
 	isNotMountPoint, err := mount.IsNotMountPoint(mounter, targetPath)
-	if err != nil{
+	if err != nil {
 		if os.IsNotExist(err) {
 			logger.With("TargetPath", targetPath).Infof("mount point does not exist")
 			return &csi.NodeUnpublishVolumeResponse{}, nil
@@ -253,13 +269,25 @@ func (d FSSNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 		logger.With("TargetPath", targetPath).Infof("Not a mount point, removing path")
 		return &csi.NodeUnpublishVolumeResponse{}, nil
 	}
+	logger.Debug("Trying to unmount.")
+	startTime := time.Now()
 
+	fssUnmountSemaphoreCtx, cancel := context.WithTimeout(ctx, fssUnmountSemaphoreTimeout)
+	defer cancel()
+
+	err = fssUnmountSemaphore.Acquire(fssUnmountSemaphoreCtx, 1)
+	if err != nil {
+		logger.With(zap.Error(err)).Errorf("Error aquiring lock during unstage.")
+		return nil, status.Error(codes.Aborted, "To many unmount requests.")
+	}
+	defer fssUnmountSemaphore.Release(1)
+
+	logger.Info("Unmount started")
 	if err := mounter.Unmount(targetPath); err != nil {
 		logger.With(zap.Error(err)).Error("failed to unmount target path.")
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-
-	logger.With("TargetPath", targetPath).
+	logger.With("UnmountTime", time.Since(startTime).Milliseconds()).With("TargetPath", targetPath).
 		Info("Unmounting volume completed")
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
@@ -270,9 +298,10 @@ func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
 
-	mountTargetIP, exportPath  := validateVolumeId(req.VolumeId)
+	volumeHandler := csi_util.ValidateFssId(req.VolumeId)
+	_, mountTargetIP, exportPath := volumeHandler.FilesystemOcid, volumeHandler.MountTargetIPAddress, volumeHandler.FsExportPath
 
-	if mountTargetIP == "" || exportPath == ""{
+	if mountTargetIP == "" || exportPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
 
@@ -280,7 +309,7 @@ func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId, "stagingPath", req.StagingTargetPath)
+	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeUnstageVolume.")
@@ -290,19 +319,32 @@ func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 	defer d.volumeLocks.Release(req.VolumeId)
 
 	targetPath := req.GetStagingTargetPath()
+	logger.Debug("Trying to unstage.")
+	startTime := time.Now()
 
-	err := d.unmountAndCleanup(logger, targetPath, exportPath, mountTargetIP)
+	fssUnmountSemaphoreCtx, cancel := context.WithTimeout(ctx, fssUnmountSemaphoreTimeout)
+	defer cancel()
+
+	err := fssUnmountSemaphore.Acquire(fssUnmountSemaphoreCtx, 1)
+	if err != nil {
+		logger.With(zap.Error(err)).Errorf("Error aquiring lock during unstage.")
+		return nil, status.Error(codes.Aborted, "To many unmount requests.")
+	}
+	defer fssUnmountSemaphore.Release(1)
+
+	logger.Info("Unstage started.")
+	err = d.unmountAndCleanup(logger, targetPath, exportPath, mountTargetIP)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.With("StagingTargetPath", targetPath).
-		Info("Unmounting volume completed")
+	logger.With("UnstageTime", time.Since(startTime).Milliseconds()).
+		With("StagingTargetPath", targetPath).Info("Unmounting volume completed")
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
 func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath string, exportPath string, mountTargetIP string) error {
-	mounter := mount.New(logger, mountPath)
+	mounter := mount.New(mountPath)
 	// Use mount.IsNotMountPoint because mounter.IsLikelyNotMountPoint can't detect bind mounts
 	isNotMountPoint, err := mount.IsNotMountPoint(mounter, targetPath)
 	if err != nil {
@@ -323,7 +365,7 @@ func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath s
 		return nil
 	}
 
-	sources, err := mount.FindMount(mounter, targetPath)
+	sources, err := csi_util.FindMount(targetPath)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Find Mount failed for target path")
 		return status.Error(codes.Internal, "Find Mount failed for target path")
@@ -341,7 +383,7 @@ func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath s
 	logger.Debugf("Sources mounted at staging target path %v", sources)
 
 	if inTransitEncryption {
-		err = mounter.UnmountWithEncrypt(targetPath)
+		err = disk.UnmountWithEncrypt(logger, targetPath)
 	} else {
 		err = mounter.Unmount(targetPath)
 	}
@@ -395,8 +437,7 @@ func (d FSSNodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetV
 	return nil, status.Error(codes.Unimplemented, "NodeGetVolumeStats is not supported yet")
 }
 
-//NodeExpandVolume returns the expand of the volume
+// NodeExpandVolume returns the expand of the volume
 func (d FSSNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "NodeExpandVolume is not supported yet")
 }
-

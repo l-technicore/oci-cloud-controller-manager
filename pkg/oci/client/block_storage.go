@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -36,7 +36,9 @@ const (
 )
 
 const (
-	volumePollInterval = 5 * time.Second
+	volumePollInterval       = 5 * time.Second
+	volumeBackupPollInterval = 5 * time.Second
+	volumeClonePollInterval  = 10 * time.Second
 	// OCIVolumeID is the name of the oci volume id.
 	OCIVolumeID = "ociVolumeID"
 	// OCIVolumeBackupID is the name of the oci volume backup id annotation.
@@ -50,11 +52,18 @@ const (
 // by the volume provisioner.
 type BlockStorageInterface interface {
 	AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error)
+	AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error)
 	CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error)
 	DeleteVolume(ctx context.Context, id string) error
 	GetVolume(ctx context.Context, id string) (*core.Volume, error)
 	GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error)
 	UpdateVolume(ctx context.Context, volumeId string, details core.UpdateVolumeDetails) (*core.Volume, error)
+
+	AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id string) (*core.VolumeBackup, error)
+	CreateVolumeBackup(ctx context.Context, details core.CreateVolumeBackupDetails) (*core.VolumeBackup, error)
+	DeleteVolumeBackup(ctx context.Context, id string) error
+	GetVolumeBackup(ctx context.Context, id string) (*core.VolumeBackup, error)
+	GetVolumeBackupsByName(ctx context.Context, snapshotName, compartmentID string) ([]core.VolumeBackup, error)
 }
 
 func (c *client) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
@@ -75,7 +84,24 @@ func (c *client) GetVolume(ctx context.Context, id string) (*core.Volume, error)
 
 }
 
-//AwaitVolumeAvailableORTimeout takes context as timeout
+func (c *client) GetVolumeBackup(ctx context.Context, id string) (*core.VolumeBackup, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetVolumeBackup")
+	}
+
+	resp, err := c.bs.GetVolumeBackup(ctx, core.GetVolumeBackupRequest{
+		VolumeBackupId:  &id,
+		RequestMetadata: c.requestMetadata})
+	incRequestCounter(err, getVerb, snapshotResource)
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.VolumeBackup, nil
+}
+
+// AwaitVolumeAvailableORTimeout takes context as timeout
 func (c *client) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
 	var vol *core.Volume
 	if err := wait.PollImmediateUntil(volumePollInterval, func() (bool, error) {
@@ -104,6 +130,66 @@ func (c *client) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (
 	return vol, nil
 }
 
+// AwaitVolumeBackupAvailableOrTimeout takes context as timeout
+func (c *client) AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id string) (*core.VolumeBackup, error) {
+	var volBackup *core.VolumeBackup
+	if err := wait.PollImmediateUntil(volumeBackupPollInterval, func() (bool, error) {
+		var err error
+		volBackup, err = c.GetVolumeBackup(ctx, id)
+		if err != nil {
+			if !IsRetryable(err) {
+				return false, err
+			}
+			return false, nil
+		}
+
+		switch state := volBackup.LifecycleState; state {
+		case core.VolumeBackupLifecycleStateAvailable:
+			return true, nil
+		case core.VolumeBackupLifecycleStateFaulty,
+			core.VolumeBackupLifecycleStateTerminated,
+			core.VolumeBackupLifecycleStateTerminating:
+			return false, errors.Errorf("snapshot did not become available (lifecycleState=%q)", state)
+		}
+		return false, nil
+	}, ctx.Done()); err != nil {
+		return nil, err
+	}
+
+	return volBackup, nil
+}
+
+func (c *client) AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
+	var volClone *core.Volume
+	if err := wait.PollImmediateUntil(volumeClonePollInterval, func() (bool, error) {
+		var err error
+		volClone, err = c.GetVolume(ctx, id)
+		if err != nil {
+			if !IsRetryable(err) {
+				return false, err
+			}
+			return false, nil
+		}
+
+		switch state := volClone.LifecycleState; state {
+		case core.VolumeLifecycleStateAvailable:
+			if *volClone.IsHydrated == true {
+				return true, nil
+			}
+			return false, nil
+		case core.VolumeLifecycleStateFaulty,
+			core.VolumeLifecycleStateTerminated,
+			core.VolumeLifecycleStateTerminating:
+			return false, errors.Errorf("Clone volume did not become available and hydrated (lifecycleState=%q) (hydrationStatus=%v)", state, *volClone.IsHydrated)
+		}
+		return false, nil
+	}, ctx.Done()); err != nil {
+		return nil, err
+	}
+
+	return volClone, nil
+}
+
 func (c *client) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return nil, RateLimitError(true, "CreateVolume")
@@ -115,13 +201,29 @@ func (c *client) CreateVolume(ctx context.Context, details core.CreateVolumeDeta
 
 	if err == nil {
 		logger := c.logger.With("AvailabilityDomain", *(details.AvailabilityDomain),
-			"CompartmentId", *(details.CompartmentId), "VolumeName", *(details.DisplayName),
-			"OpcRequestId",*(resp.OpcRequestId))
+			"CompartmentId", *(details.CompartmentId), "volumeName", *(details.DisplayName),
+			"OpcRequestId", *(resp.OpcRequestId))
 		logger.Info("OPC Request ID recorded while creating volume.")
-	} else  {
+	} else {
 		return nil, errors.WithStack(err)
 	}
 	return &resp.Volume, nil
+}
+
+func (c *client) CreateVolumeBackup(ctx context.Context, details core.CreateVolumeBackupDetails) (*core.VolumeBackup, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(true, "CreateSnapshot")
+	}
+
+	resp, err := c.bs.CreateVolumeBackup(ctx, core.CreateVolumeBackupRequest{CreateVolumeBackupDetails: details,
+		RequestMetadata: c.requestMetadata})
+	incRequestCounter(err, createVerb, snapshotResource)
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.VolumeBackup, nil
 }
 
 func (c *client) UpdateVolume(ctx context.Context, volumeId string, details core.UpdateVolumeDetails) (*core.Volume, error) {
@@ -134,13 +236,13 @@ func (c *client) UpdateVolume(ctx context.Context, volumeId string, details core
 		UpdateVolumeDetails: details,
 		RequestMetadata:     c.requestMetadata,
 	})
-	incRequestCounter(err, createVerb, volumeResource)
+	incRequestCounter(err, updateVerb, volumeResource)
 
 	if err == nil {
-		logger := c.logger.With("VolumeName", *(details.DisplayName),
-			"OpcRequestId",*(resp.OpcRequestId))
+		logger := c.logger.With("volumeName", *(details.DisplayName),
+			"OpcRequestId", *(resp.OpcRequestId))
 		logger.Info("OPC Request ID recorded while updating volume.")
-	} else  {
+	} else {
 		return nil, errors.WithStack(err)
 	}
 	return &resp.Volume, nil
@@ -162,6 +264,24 @@ func (c *client) DeleteVolume(ctx context.Context, id string) error {
 
 	return nil
 }
+
+func (c *client) DeleteVolumeBackup(ctx context.Context, id string) error {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return RateLimitError(true, "DeleteSnapshot")
+	}
+
+	_, err := c.bs.DeleteVolumeBackup(ctx, core.DeleteVolumeBackupRequest{
+		VolumeBackupId:  &id,
+		RequestMetadata: c.requestMetadata})
+	incRequestCounter(err, deleteVerb, snapshotResource)
+
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
 /*
  * TODO: Expand the API to be generic 'GetVolumes' with the following features as necessary
  * 1. Option to sort by display name or creation timestamp.
@@ -177,10 +297,10 @@ func (c *client) GetVolumesByName(ctx context.Context, volumeName, compartmentID
 		}
 
 		listVolumeResponse, err := c.bs.ListVolumes(ctx,
-			core.ListVolumesRequest {
+			core.ListVolumesRequest{
 				CompartmentId:   &compartmentID,
 				Page:            page,
-				DisplayName:	 &volumeName,
+				DisplayName:     &volumeName,
 				RequestMetadata: c.requestMetadata,
 			})
 
@@ -188,14 +308,14 @@ func (c *client) GetVolumesByName(ctx context.Context, volumeName, compartmentID
 			return nil, errors.WithStack(err)
 		}
 
-		logger := c.logger.With("VolumeName", volumeName, "CompartmentID", compartmentID,
-			"OpcRequestId",*(listVolumeResponse.OpcRequestId))
+		logger := c.logger.With("volumeName", volumeName, "CompartmentID", compartmentID,
+			"OpcRequestId", *(listVolumeResponse.OpcRequestId))
 		logger.Info("OPC Request ID recorded while fetching volumes by name.")
 
 		for _, volume := range listVolumeResponse.Items {
 			volumeState := volume.LifecycleState
 			if volumeState == core.VolumeLifecycleStateAvailable ||
-					volumeState == core.VolumeLifecycleStateProvisioning {
+				volumeState == core.VolumeLifecycleStateProvisioning {
 				volumeList = append(volumeList, volume)
 			}
 		}
@@ -206,4 +326,46 @@ func (c *client) GetVolumesByName(ctx context.Context, volumeName, compartmentID
 	}
 
 	return volumeList, nil
+}
+
+func (c *client) GetVolumeBackupsByName(ctx context.Context, snapshotName, compartmentID string) ([]core.VolumeBackup, error) {
+	var page *string
+	volumeBackupList := make([]core.VolumeBackup, 0)
+
+	for {
+
+		if !c.rateLimiter.Writer.TryAccept() {
+			return nil, RateLimitError(true, "CreateVolumeBackup")
+		}
+
+		listVolumeBackupsResponse, err := c.bs.ListVolumeBackups(ctx,
+			core.ListVolumeBackupsRequest{
+				CompartmentId:   &compartmentID,
+				Page:            page,
+				DisplayName:     &snapshotName,
+				RequestMetadata: c.requestMetadata,
+			})
+
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		logger := c.logger.With("snapshotName", snapshotName, "CompartmentID", compartmentID,
+			"OpcRequestId", *(listVolumeBackupsResponse.OpcRequestId))
+		logger.Info("OPC Request ID recorded while fetching volume backups by name.")
+
+		for _, volumeBackup := range listVolumeBackupsResponse.Items {
+			volumeState := volumeBackup.LifecycleState
+			if volumeState == core.VolumeBackupLifecycleStateAvailable ||
+				volumeState == core.VolumeBackupLifecycleStateCreating {
+				volumeBackupList = append(volumeBackupList, volumeBackup)
+			}
+		}
+
+		if page = listVolumeBackupsResponse.OpcNextPage; page == nil {
+			break
+		}
+	}
+
+	return volumeBackupList, nil
 }

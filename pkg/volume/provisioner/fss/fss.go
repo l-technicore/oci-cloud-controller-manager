@@ -23,13 +23,13 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	fss "github.com/oracle/oci-go-sdk/v31/filestorage"
-	"github.com/oracle/oci-go-sdk/v31/identity"
+	fss "github.com/oracle/oci-go-sdk/v65/filestorage"
+	"github.com/oracle/oci-go-sdk/v65/identity"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/v6/controller"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/v9/controller"
 )
 
 const (
@@ -80,14 +80,17 @@ func NewFilesystemProvisioner(logger *zap.SugaredLogger, client client.Interface
 }
 
 func (fsp *filesystemProvisioner) getOrCreateFileSystem(ctx context.Context, logger *zap.SugaredLogger, ad, displayName string) (*fss.FileSystem, error) {
-	summary, err := fsp.client.FSS().GetFileSystemSummaryByDisplayName(ctx, fsp.compartmentID, ad, displayName)
+	_, summary, err := fsp.client.FSS().GetFileSystemSummaryByDisplayName(ctx, fsp.compartmentID, ad, displayName)
 	if err != nil && !client.IsNotFound(err) {
 		return nil, err
 	}
-	if summary != nil {
-		return fsp.client.FSS().AwaitFileSystemActive(ctx, logger, *summary.Id)
+	if len(summary) > 1 {
+		logger.Error("duplicate filesystem exists")
+		return nil, fmt.Errorf("duplicate volume %q exists", displayName)
+	} else if len(summary) > 0 {
+		filesystem := summary[0]
+		return fsp.client.FSS().AwaitFileSystemActive(ctx, logger, *filesystem.Id)
 	}
-
 	fs, err := fsp.client.FSS().CreateFileSystem(ctx, fss.CreateFileSystemDetails{
 		CompartmentId:      &fsp.compartmentID,
 		AvailabilityDomain: &ad,
@@ -103,15 +106,14 @@ func (fsp *filesystemProvisioner) getOrCreateFileSystem(ctx context.Context, log
 }
 
 func (fsp *filesystemProvisioner) getOrCreateExport(ctx context.Context, logger *zap.SugaredLogger, fsID, exportSetID string) (*fss.Export, error) {
-	summary, err := fsp.client.FSS().FindExport(ctx, fsp.compartmentID, fsID, exportSetID)
+	path := "/" + fsID
+	summary, err := fsp.client.FSS().FindExport(ctx, fsID, path, exportSetID)
 	if err != nil && !client.IsNotFound(err) {
 		return nil, err
 	}
 	if summary != nil {
 		return fsp.client.FSS().AwaitExportActive(ctx, logger, *summary.Id)
 	}
-
-	path := "/" + fsID
 
 	// If export doesn't already exist create it.
 	export, err := fsp.client.FSS().CreateExport(ctx, fss.CreateExportDetails{

@@ -17,19 +17,285 @@ package oci
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
-
-	"github.com/oracle/oci-go-sdk/v31/core"
-
-	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
+	testclient "k8s.io/client-go/kubernetes/fake"
+
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/core"
 )
+
+func newNodeObj(name string, labels map[string]string) *v1.Node {
+	return &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+	}
+}
+
+func Test_filterNodes(t *testing.T) {
+	testCases := map[string]struct {
+		nodes    []*v1.Node
+		service  *v1.Service
+		expected []*v1.Node
+	}{
+		"lb - no annotation": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "kube-system",
+					Name:        "testservice",
+					Annotations: map[string]string{},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+		},
+		"nlb - no annotation": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+		},
+		"lb - empty annotation": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNodeFilter: "",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+		},
+		"nlb - empty annotation": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:              "nlb",
+						ServiceAnnotationNetworkLoadBalancerNodeFilter: "",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+		},
+		"lb - single selector select all": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "bar"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNodeFilter: "foo=bar",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "bar"}),
+			},
+		},
+		"nlb - single selector select all": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "bar"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:              "nlb",
+						ServiceAnnotationNetworkLoadBalancerNodeFilter: "foo=bar",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "bar"}),
+			},
+		},
+		"lb - single selector select some": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNodeFilter: "foo=bar",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+			},
+		},
+		"nlb - single selector select some": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:              "nlb",
+						ServiceAnnotationNetworkLoadBalancerNodeFilter: "foo=bar",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+			},
+		},
+		"lb - multi selector select all": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNodeFilter: "foo",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+		},
+		"nlb - multi selector select all": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:              "nlb",
+						ServiceAnnotationNetworkLoadBalancerNodeFilter: "foo",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+		},
+		"lb - multi selector select some": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "joe"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNodeFilter: "foo in (bar, baz)",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+		},
+		"nlb - multi selector select some": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "joe"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:              "nlb",
+						ServiceAnnotationNetworkLoadBalancerNodeFilter: "foo in (bar, baz)",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			nodes, err := filterNodes(tc.service, tc.nodes)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !reflect.DeepEqual(nodes, tc.expected) {
+				t.Errorf("expected: %+v got %+v", tc.expected, nodes)
+			}
+		})
+	}
+}
 
 func Test_getDefaultLBSubnets(t *testing.T) {
 	type args struct {
@@ -177,6 +443,83 @@ func TestGetLoadBalancerSubnets(t *testing.T) {
 				},
 			},
 			expected: []string{"regional-subnet"},
+		},
+		"defaults only no annotations nlb": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: []string{"one"},
+		},
+		"internal default subnet overridden with subnet annotation NLB": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:            "nlb",
+						ServiceAnnotationNetworkLoadBalancerInternal: "true",
+						ServiceAnnotationNetworkLoadBalancerSubnet:   "subnet",
+					},
+				},
+			},
+			expected: []string{"subnet"},
+		},
+		"internal no default subnet only subnet annotation nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:            "nlb",
+						ServiceAnnotationNetworkLoadBalancerInternal: "true",
+						ServiceAnnotationNetworkLoadBalancerSubnet:   "subnet",
+					},
+				},
+			},
+			expected: []string{"subnet"},
+		},
+		"override defaults with annotations nlb": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:          "nlb",
+						ServiceAnnotationNetworkLoadBalancerSubnet: "annotation-one",
+					},
+				},
+			},
+			expected: []string{"annotation-one"},
+		},
+		"no default subnet defined override subnets via annotationsnlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:          "nlb",
+						ServiceAnnotationNetworkLoadBalancerSubnet: "annotation-one",
+					},
+				},
+			},
+			expected: []string{"annotation-one"},
 		},
 	}
 	cp := &CloudProvider{
@@ -394,46 +737,188 @@ func TestCloudProvider_GetLoadBalancer(t *testing.T) {
 	}
 }
 
+func TestCloudProvider_getLoadBalancerProvider(t *testing.T) {
+
+	kc := NewSimpleClientset(
+		&v1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "sa", Namespace: "ns",
+			},
+		})
+
+	factory := informers.NewSharedInformerFactoryWithOptions(kc, time.Second, informers.WithNamespace("ns"))
+	serviceAccountInformer := factory.Core().V1().ServiceAccounts()
+	go serviceAccountInformer.Informer().Run(wait.NeverStop)
+
+	time.Sleep(time.Second)
+
+	cp := &CloudProvider{
+		client:               MockOCIClient{},
+		kubeclient:           kc,
+		ServiceAccountLister: serviceAccountInformer.Lister(),
+		config:               &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:               zap.S(),
+	}
+
+	tests := map[string]struct {
+		service    *v1.Service
+		wantErr    bool
+		wantLbType string
+		cp         *CloudProvider
+	}{
+		"Get Load Balancer Provider type LB with Workload Identity RP": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-lb",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationServiceAccountName: `sa`,
+					},
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockLoadBalancerClient",
+			cp:         cp,
+		},
+		"Get Load Balancer Provider type NLB with Workload Identity RP": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-nlb",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:   "nlb",
+						ServiceAnnotationServiceAccountName: `sa`,
+					},
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockNetworkLoadBalancerClient",
+			cp:         cp,
+		},
+		"Fail to Get Load Balancer Provider type LB with Workload Identity RP when SA does not exist": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-get-sa-error",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationServiceAccountName: `sa-does-not-exist`,
+					},
+				},
+			},
+			wantErr: true,
+			cp:      cp,
+		},
+		"Get Load Balancer Provider type LB": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-lb-2",
+					UID:       "test-uid",
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockLoadBalancerClient",
+			cp:         cp,
+		},
+		"Get Load Balancer Provider type NLB": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-nlb-2",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockNetworkLoadBalancerClient",
+			cp:         cp,
+		},
+	}
+
+	t.Parallel()
+	for name, tt := range tests {
+		name, tt := name, tt
+		t.Run(name, func(t *testing.T) {
+			got, _ := tt.cp.getLoadBalancerProvider(context.Background(), tt.service)
+
+			if !tt.wantErr {
+				if reflect.DeepEqual(got, CloudLoadBalancerProvider{}) {
+					t.Errorf("GetLoadBalancerProvider() didn't expect an empty provider")
+				}
+				if fmt.Sprintf("%T", got.lbClient) != tt.wantLbType {
+					t.Errorf("GetLoadBalancerProvider() got LB of type = %T, want %T", got.lbClient, tt.wantLbType)
+				}
+			}
+		})
+	}
+}
+
 func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 	var tests = map[string]struct {
 		spec         *LBSpec
-		loadbalancer *loadbalancer.LoadBalancer
+		loadbalancer *client.GenericLoadBalancer
 		wantErr      error
 	}{
-		"Update NSG when there's an issue with LB": {
+		"lb id is missing": {
 			spec: &LBSpec{
 				Name:                    "test",
 				NetworkSecurityGroupIds: []string{"ocid1"},
 			},
-			loadbalancer: &loadbalancer.LoadBalancer{
+			loadbalancer: &client.GenericLoadBalancer{
 				Id:          common.String(""),
 				DisplayName: common.String("privateLB"),
 			},
-			wantErr: errors.New("failed to update loadbalancer Network Security Group: provided LB ID is empty"),
+			wantErr: errors.New("failed to create UpdateNetworkSecurityGroups request: provided LB ID is empty"),
+		},
+		"failed to create workrequest": {
+			spec: &LBSpec{
+				Name:                    "test",
+				NetworkSecurityGroupIds: []string{"ocid1"},
+			},
+			loadbalancer: &client.GenericLoadBalancer{
+				Id:          common.String("failedToCreateRequest"),
+				DisplayName: common.String("privateLB"),
+			},
+			wantErr: errors.New("failed to create UpdateNetworkSecurityGroups request: internal server error"),
+		},
+		"failed to get workrequest": {
+			spec: &LBSpec{
+				Name:                    "test",
+				NetworkSecurityGroupIds: []string{"ocid1"},
+			},
+			loadbalancer: &client.GenericLoadBalancer{
+				Id:          common.String("failedToGetUpdateNetworkSecurityGroupsWorkRequest"),
+				DisplayName: common.String("privateLB"),
+			},
+			wantErr: errors.New("failed to await UpdateNetworkSecurityGroups workrequest: internal server error for get workrequest call"),
 		},
 		"Update NSG to existing LB": {
 			spec: &LBSpec{
 				Name:                    "test",
 				NetworkSecurityGroupIds: []string{"ocid1"},
 			},
-			loadbalancer: &loadbalancer.LoadBalancer{
+			loadbalancer: &client.GenericLoadBalancer{
 				Id:          common.String("ocid1"),
 				DisplayName: common.String("privateLB"),
 			},
 			wantErr: nil,
 		},
 	}
-	cp := &CloudProvider{
-		NodeLister:    &mockNodeLister{},
-		client:        MockOCIClient{},
-		logger:        zap.S(),
-		instanceCache: &mockInstanceCache{},
+	cp := &CloudLoadBalancerProvider{
+		lbClient: &MockLoadBalancerClient{},
+		client:   MockOCIClient{},
+		logger:   zap.S(),
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			err := cp.updateLoadBalancerNetworkSecurityGroups(context.Background(), tt.loadbalancer, tt.spec)
-			if err != nil && err.Error() != tt.wantErr.Error() {
-				t.Errorf("Expected error = %v, but got %v", err, tt.wantErr)
+			if !assertError(err, tt.wantErr) {
+				t.Errorf("Expected error = %v, but got %v", tt.wantErr, err)
 				return
 			}
 		})
@@ -442,9 +927,9 @@ func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 
 func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 	tests := []struct {
-		name string
+		name    string
 		service *v1.Service
-		err  string
+		err     string
 		wantErr bool
 	}{
 		{
@@ -455,11 +940,11 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "None",
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "None",
 					},
 				},
 			},
-			err:    "",
+			err:     "",
 			wantErr: false,
 		},
 		{
@@ -470,11 +955,11 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid-delete-err",
 					Annotations: map[string]string{
-						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "None",
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "None",
 					},
 				},
 			},
-			err:    "delete load balancer \"test-uid-delete-err\"",
+			err:     "delete load balancer \"test-uid-delete-err\"",
 			wantErr: true,
 		},
 		{
@@ -485,11 +970,11 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "All",
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "All",
 					},
 				},
 			},
-			err:    "",
+			err:     "",
 			wantErr: false,
 		},
 		{
@@ -500,11 +985,11 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid-node-err",
 					Annotations: map[string]string{
-						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "All",
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "All",
 					},
 				},
 			},
-			err:    "fetching nodes by internal ips",
+			err:     "fetching nodes by internal ips",
 			wantErr: true,
 		},
 		{
@@ -516,7 +1001,7 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					UID:       "test-uid",
 				},
 			},
-			err:    "",
+			err:     "",
 			wantErr: false,
 		},
 		{
@@ -528,20 +1013,27 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					UID:       "test-uid-delete-err",
 				},
 			},
-			err:    "delete load balancer \"test-uid-delete-err\"",
+			err:     "delete load balancer \"test-uid-delete-err\"",
 			wantErr: true,
 		},
 	}
 	cp := &CloudProvider{
-		NodeLister:                 &mockNodeLister{},
-		client:                     MockOCIClient{},
+		NodeLister: &mockNodeLister{},
+		client:     MockOCIClient{},
 		securityListManagerFactory: func(mode string) securityListManager {
-										return MockSecurityListManager{}
-									},
-		config:                     &providercfg.Config{CompartmentID: "testCompartment"},
-		logger:                     zap.S(),
-		instanceCache:              &mockInstanceCache{},
-		metricPusher:               nil,
+			return MockSecurityListManager{}
+		},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+		metricPusher:  nil,
+		kubeclient: testclient.NewSimpleClientset(
+			&v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testservice", Namespace: "kube-system",
+				},
+			}),
+		lbLocks: NewLoadBalancerLocks(),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -550,4 +1042,11 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 			}
 		})
 	}
+}
+
+func assertError(actual, expected error) bool {
+	if expected == nil || actual == nil {
+		return expected == actual
+	}
+	return actual.Error() == expected.Error()
 }

@@ -16,31 +16,31 @@ package client
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
 	"time"
 
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/common/auth"
+	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/oracle/oci-go-sdk/v65/filestorage"
+	"github.com/oracle/oci-go-sdk/v65/identity"
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/flowcontrol"
-
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/core"
-	"github.com/oracle/oci-go-sdk/v31/filestorage"
-	"github.com/oracle/oci-go-sdk/v31/identity"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 )
+
+// defaultSynchronousAPIContextTimeout is the time we wait for synchronous APIs
+// to respond before we timeout the request
+const defaultSynchronousAPIContextTimeout = 10 * time.Second
+const defaultSynchronousAPIPollContextTimeout = 10 * time.Minute
 
 // Interface of consumed OCI API functionality.
 type Interface interface {
 	Compute() ComputeInterface
-	LoadBalancer() LoadBalancerInterface
+	LoadBalancer(*zap.SugaredLogger, string, string, *authv1.TokenRequest) GenericLoadBalancerInterface
 	Networking() NetworkingInterface
 	BlockStorage() BlockStorageInterface
 	FSS() FileStorageInterface
@@ -84,6 +84,7 @@ type loadBalancerClient interface {
 	ListCertificates(ctx context.Context, request loadbalancer.ListCertificatesRequest) (response loadbalancer.ListCertificatesResponse, err error)
 	CreateCertificate(ctx context.Context, request loadbalancer.CreateCertificateRequest) (response loadbalancer.CreateCertificateResponse, err error)
 	GetWorkRequest(ctx context.Context, request loadbalancer.GetWorkRequestRequest) (response loadbalancer.GetWorkRequestResponse, err error)
+	ListWorkRequests(ctx context.Context, request loadbalancer.ListWorkRequestsRequest) (response loadbalancer.ListWorkRequestsResponse, err error)
 	CreateBackendSet(ctx context.Context, request loadbalancer.CreateBackendSetRequest) (response loadbalancer.CreateBackendSetResponse, err error)
 	UpdateBackendSet(ctx context.Context, request loadbalancer.UpdateBackendSetRequest) (response loadbalancer.UpdateBackendSetResponse, err error)
 	DeleteBackendSet(ctx context.Context, request loadbalancer.DeleteBackendSetRequest) (response loadbalancer.DeleteBackendSetResponse, err error)
@@ -92,6 +93,22 @@ type loadBalancerClient interface {
 	DeleteListener(ctx context.Context, request loadbalancer.DeleteListenerRequest) (response loadbalancer.DeleteListenerResponse, err error)
 	UpdateLoadBalancerShape(ctx context.Context, request loadbalancer.UpdateLoadBalancerShapeRequest) (response loadbalancer.UpdateLoadBalancerShapeResponse, err error)
 	UpdateNetworkSecurityGroups(ctx context.Context, request loadbalancer.UpdateNetworkSecurityGroupsRequest) (response loadbalancer.UpdateNetworkSecurityGroupsResponse, err error)
+}
+
+type networkLoadBalancerClient interface {
+	GetNetworkLoadBalancer(ctx context.Context, request networkloadbalancer.GetNetworkLoadBalancerRequest) (response networkloadbalancer.GetNetworkLoadBalancerResponse, err error)
+	ListNetworkLoadBalancers(ctx context.Context, request networkloadbalancer.ListNetworkLoadBalancersRequest) (response networkloadbalancer.ListNetworkLoadBalancersResponse, err error)
+	CreateNetworkLoadBalancer(ctx context.Context, request networkloadbalancer.CreateNetworkLoadBalancerRequest) (response networkloadbalancer.CreateNetworkLoadBalancerResponse, err error)
+	DeleteNetworkLoadBalancer(ctx context.Context, request networkloadbalancer.DeleteNetworkLoadBalancerRequest) (response networkloadbalancer.DeleteNetworkLoadBalancerResponse, err error)
+	GetWorkRequest(ctx context.Context, request networkloadbalancer.GetWorkRequestRequest) (response networkloadbalancer.GetWorkRequestResponse, err error)
+	ListWorkRequests(ctx context.Context, request networkloadbalancer.ListWorkRequestsRequest) (response networkloadbalancer.ListWorkRequestsResponse, err error)
+	CreateBackendSet(ctx context.Context, request networkloadbalancer.CreateBackendSetRequest) (response networkloadbalancer.CreateBackendSetResponse, err error)
+	UpdateBackendSet(ctx context.Context, request networkloadbalancer.UpdateBackendSetRequest) (response networkloadbalancer.UpdateBackendSetResponse, err error)
+	DeleteBackendSet(ctx context.Context, request networkloadbalancer.DeleteBackendSetRequest) (response networkloadbalancer.DeleteBackendSetResponse, err error)
+	CreateListener(ctx context.Context, request networkloadbalancer.CreateListenerRequest) (response networkloadbalancer.CreateListenerResponse, err error)
+	UpdateListener(ctx context.Context, request networkloadbalancer.UpdateListenerRequest) (response networkloadbalancer.UpdateListenerResponse, err error)
+	DeleteListener(ctx context.Context, request networkloadbalancer.DeleteListenerRequest) (response networkloadbalancer.DeleteListenerResponse, err error)
+	UpdateNetworkSecurityGroups(ctx context.Context, request networkloadbalancer.UpdateNetworkSecurityGroupsRequest) (response networkloadbalancer.UpdateNetworkSecurityGroupsResponse, err error)
 }
 
 type filestorageClient interface {
@@ -106,6 +123,9 @@ type filestorageClient interface {
 	DeleteExport(ctx context.Context, request filestorage.DeleteExportRequest) (response filestorage.DeleteExportResponse, err error)
 
 	GetMountTarget(ctx context.Context, request filestorage.GetMountTargetRequest) (response filestorage.GetMountTargetResponse, err error)
+	CreateMountTarget(ctx context.Context, request filestorage.CreateMountTargetRequest) (response filestorage.CreateMountTargetResponse, err error)
+	DeleteMountTarget(ctx context.Context, request filestorage.DeleteMountTargetRequest) (response filestorage.DeleteMountTargetResponse, err error)
+	ListMountTargets(ctx context.Context, request filestorage.ListMountTargetsRequest) (response filestorage.ListMountTargetsResponse, err error)
 }
 
 type blockstorageClient interface {
@@ -114,6 +134,11 @@ type blockstorageClient interface {
 	DeleteVolume(ctx context.Context, request core.DeleteVolumeRequest) (response core.DeleteVolumeResponse, err error)
 	ListVolumes(ctx context.Context, request core.ListVolumesRequest) (response core.ListVolumesResponse, err error)
 	UpdateVolume(ctx context.Context, request core.UpdateVolumeRequest) (response core.UpdateVolumeResponse, err error)
+
+	GetVolumeBackup(ctx context.Context, request core.GetVolumeBackupRequest) (response core.GetVolumeBackupResponse, err error)
+	CreateVolumeBackup(ctx context.Context, request core.CreateVolumeBackupRequest) (response core.CreateVolumeBackupResponse, err error)
+	DeleteVolumeBackup(ctx context.Context, request core.DeleteVolumeBackupRequest) (response core.DeleteVolumeBackupResponse, err error)
+	ListVolumeBackups(ctx context.Context, request core.ListVolumeBackupsRequest) (response core.ListVolumeBackupsResponse, err error)
 }
 
 type identityClient interface {
@@ -121,12 +146,13 @@ type identityClient interface {
 }
 
 type client struct {
-	compute      computeClient
-	network      virtualNetworkClient
-	loadbalancer loadBalancerClient
-	filestorage  filestorageClient
-	bs           blockstorageClient
-	identity     identityClient
+	compute             computeClient
+	network             virtualNetworkClient
+	loadbalancer        GenericLoadBalancerInterface
+	networkloadbalancer GenericLoadBalancerInterface
+	filestorage         filestorageClient
+	bs                  blockstorageClient
+	identity            identityClient
 
 	requestMetadata common.RequestMetadata
 	rateLimiter     RateLimiter
@@ -137,6 +163,7 @@ type client struct {
 
 // New constructs an OCI API client.
 func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimiter *RateLimiter) (Interface, error) {
+
 	compute, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewComputeClientWithConfigurationProvider")
@@ -165,6 +192,16 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 	err = configureCustomTransport(logger, &lb.BaseClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring loadbalancer client custom transport")
+	}
+
+	nlb, err := networkloadbalancer.NewNetworkLoadBalancerClientWithConfigurationProvider(cp)
+	if err != nil {
+		return nil, errors.Wrap(err, "NewNetworkLoadBalancerClientWithConfigurationProvider")
+	}
+
+	err = configureCustomTransport(logger, &nlb.BaseClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "configuring networkloadbalancer client custom transport")
 	}
 
 	identity, err := identity.NewIdentityClientWithConfigurationProvider(cp)
@@ -197,18 +234,32 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "configuring file storage service client custom transport")
 	}
 
-	c := &client{
-		compute:      &compute,
-		network:      &network,
-		identity:     &identity,
-		loadbalancer: &lb,
-		bs:           &bs,
-		filestorage:  &fss,
+	requestMetadata := common.RequestMetadata{
+		RetryPolicy: newRetryPolicy(),
+	}
 
-		rateLimiter: *opRateLimiter,
-		requestMetadata: common.RequestMetadata{
-			RetryPolicy: newRetryPolicy(),
-		},
+	loadbalancer := loadbalancerClientStruct{
+		loadbalancer:    lb,
+		requestMetadata: requestMetadata,
+		rateLimiter:     *opRateLimiter,
+	}
+	networkloadbalancer := networkLoadbalancer{
+		networkloadbalancer: nlb,
+		requestMetadata:     requestMetadata,
+		rateLimiter:         *opRateLimiter,
+	}
+
+	c := &client{
+		compute:             &compute,
+		network:             &network,
+		identity:            &identity,
+		loadbalancer:        &loadbalancer,
+		networkloadbalancer: &networkloadbalancer,
+		bs:                  &bs,
+		filestorage:         &fss,
+
+		rateLimiter:     *opRateLimiter,
+		requestMetadata: requestMetadata,
 
 		subnetCache: cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
 		logger:      logger,
@@ -217,8 +268,70 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 	return c, nil
 }
 
-func (c *client) LoadBalancer() LoadBalancerInterface {
-	return c
+// LoadBalancer constructs an OCI LB/NLB API client using workload identity token if service account provided
+// or else returns the default cluster level client
+func (c *client) LoadBalancer(logger *zap.SugaredLogger, lbType string, targetTenancyID string, tokenRequest *authv1.TokenRequest) (genericLoadBalancer GenericLoadBalancerInterface) {
+
+	// tokenRequest is nil if Workload Identity LB/NLB client is not requested
+	if tokenRequest == nil {
+		if lbType == "nlb" {
+			return c.networkloadbalancer
+		}
+		if lbType == "lb" {
+			return c.loadbalancer
+		}
+		logger.Error("Failed to get Client since load-balancer-type is neither lb or nlb!")
+		return nil
+	}
+
+	// If tokenRequest is present then the requested LB/NLB client is WRIS / Workload Identity RP based
+	tokenProvider := auth.NewSuppliedServiceAccountTokenProvider(tokenRequest.Status.Token)
+	configProvider, err := auth.OkeWorkloadIdentityConfigurationProviderWithServiceAccountTokenProvider(tokenProvider)
+	if err != nil {
+		logger.Error("Failed to get oke workload identity configuration provider! " + err.Error())
+		return nil
+	}
+
+	if lbType == "lb" {
+		lb, err := loadbalancer.NewLoadBalancerClientWithConfigurationProvider(configProvider)
+		if err != nil {
+			logger.Error("Failed to get new LB client with oke workload identity configuration provider! Error:" + err.Error())
+			return nil
+		}
+
+		err = configureCustomTransport(logger, &lb.BaseClient)
+		if err != nil {
+			logger.Error("Failed configure custom transport for LB Client! Error:" + err.Error())
+			return nil
+		}
+
+		return &loadbalancerClientStruct{
+			loadbalancer:    lb,
+			requestMetadata: c.requestMetadata,
+			rateLimiter:     c.rateLimiter,
+		}
+	}
+	if lbType == "nlb" {
+		nlb, err := networkloadbalancer.NewNetworkLoadBalancerClientWithConfigurationProvider(configProvider)
+		if err != nil {
+			logger.Error("Failed to get new NLB client with oke workload identity configuration provider! Error:" + err.Error())
+			return nil
+		}
+
+		err = configureCustomTransport(logger, &nlb.BaseClient)
+		if err != nil {
+			logger.Error("Failed configure custom transport for NLB Client! Error:" + err.Error())
+			return nil
+		}
+
+		return &networkLoadbalancer{
+			networkloadbalancer: nlb,
+			requestMetadata:     c.requestMetadata,
+			rateLimiter:         c.rateLimiter,
+		}
+	}
+	logger.Error("Failed to get Client since load-balancer-type is neither lb or nlb!")
+	return nil
 }
 
 func (c *client) Networking() NetworkingInterface {
@@ -242,51 +355,5 @@ func (c *client) FSS() FileStorageInterface {
 }
 
 func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.BaseClient) error {
-	httpClient := baseClient.HTTPClient.(*http.Client)
-
-	var transport *http.Transport
-	if httpClient.Transport == nil {
-		transport = &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-				DualStack: true,
-			}).DialContext,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		}
-	} else {
-		transport = httpClient.Transport.(*http.Transport)
-	}
-
-	ociProxy := os.Getenv("OCI_PROXY")
-	if ociProxy != "" {
-		proxyURL, err := url.Parse(ociProxy)
-		if err != nil {
-			return errors.Wrapf(err, "failed to parse OCI proxy url: %s", ociProxy)
-		}
-		transport.Proxy = func(req *http.Request) (*url.URL, error) {
-			return proxyURL, nil
-		}
-	}
-
-	trustedCACertPath := os.Getenv("TRUSTED_CA_CERT_PATH")
-	if trustedCACertPath != "" {
-		logger.With("path", trustedCACertPath).Infof("Configuring OCI client with a new trusted ca")
-		trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read root certificate: %s", trustedCACertPath)
-		}
-		caCertPool := x509.NewCertPool()
-		ok := caCertPool.AppendCertsFromPEM(trustedCACert)
-		if !ok {
-			return errors.Wrapf(err, "failed to parse root certificate: %s", trustedCACertPath)
-		}
-		transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
-	}
-
-	httpClient.Transport = transport
 	return nil
 }

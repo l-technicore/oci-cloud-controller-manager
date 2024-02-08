@@ -36,7 +36,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
-	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v65/core"
 )
 
 const (
@@ -254,7 +254,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 	attachment, err := c.Compute().FindVolumeAttachment(ctx, compartmentID, volumeOCID)
 	if err != nil && !client.IsNotFound(err) {
 		errorType = util.GetError(err)
-		fvdMetricDimension = util.GetMetricDimensionForComponent(errorType,util.FVDStorageType)
+		fvdMetricDimension = util.GetMetricDimensionForComponent(errorType, util.FVDStorageType)
 		dimensionsMap[metrics.ComponentDimension] = fvdMetricDimension
 		metrics.SendMetricData(d.metricPusher, metrics.PVAttach, time.Since(startTime).Seconds(), dimensionsMap)
 		return flexvolume.Fail(logger, "Got error in finding volume attachment", err)
@@ -348,7 +348,6 @@ func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, n
 	compartmentID, err := util.LookupNodeCompartment(d.K, nodeName)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			// https://jira.oci.oraclecorp.com/browse/OKE-14168 : Volume detachment is deferred
 			logger.Info("Node is not found, volume is likely already detached.")
 			fvdMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.FVDStorageType)
 			dimensionsMap[metrics.ComponentDimension] = fvdMetricDimension

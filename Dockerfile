@@ -14,7 +14,7 @@
 
 ARG CI_IMAGE_REGISTRY
 
-FROM ${CI_IMAGE_REGISTRY}/oci-kube-ci:1.0.5
+FROM golang:1.20.4 as builder
 
 ARG COMPONENT
 
@@ -34,6 +34,14 @@ COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/image/* /us
 
 RUN yum install -y util-linux \
   && yum install -y e2fsprogs \
+  && yum install -y xfsprogs \
   && yum clean all
+
+COPY scripts/encrypt-mount /sbin/encrypt-mount
+COPY scripts/encrypt-umount /sbin/encrypt-umount
+COPY scripts/rpm-host /sbin/rpm-host
+RUN chmod 755 /sbin/encrypt-mount
+RUN chmod 755 /sbin/encrypt-umount
+RUN chmod 755 /sbin/rpm-host
 
 COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/dist/* /usr/local/bin/

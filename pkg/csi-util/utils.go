@@ -1,16 +1,34 @@
+// Copyright 2019 Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package csi_util
 
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	kubeAPI "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -20,7 +38,6 @@ import (
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
-
 )
 
 const (
@@ -40,17 +57,35 @@ const (
 
 	// ociVolumeBackupID is the name of the oci volume backup id annotation.
 	ociVolumeBackupID = "volume.beta.kubernetes.io/oci-volume-source"
+
+	// Block Volume Performance Units
+	VpusPerGB                 = "vpusPerGB"
+	LowCostPerformanceOption  = 0
+	BalancedPerformanceOption = 10
+	HigherPerformanceOption   = 20
+
+	InTransitEncryptionPackageName = "oci-fss-utils"
+	FIPS_ENABLED_FILE_PATH         = "/host/proc/sys/crypto/fips_enabled"
+	FINDMNT_COMMAND                = "findmnt"
+	CAT_COMMAND                    = "cat"
+	RPM_COMMAND                    = "rpm-host"
 )
 
-//Util interface
+// Util interface
 type Util struct {
 	Logger *zap.SugaredLogger
 }
 
 var (
-	DiskByPathPatternPV    = `/dev/disk/by-path/pci-\d+:\d+:\d+\.\d+-scsi-\d+:\d+:\d+:\d+$`
+	DiskByPathPatternPV    = `/dev/disk/by-path/pci-\w{4}:\w{2}:\w{2}\.\d+-scsi-\d+:\d+:\d+:\d+$`
 	DiskByPathPatternISCSI = `/dev/disk/by-path/ip-[\w\.]+:\d+-iscsi-[\w\.\-:]+-lun-1$`
 )
+
+type FSSVolumeHandler struct {
+	FilesystemOcid       string
+	MountTargetIPAddress string
+	FsExportPath         string
+}
 
 func (u *Util) LookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
 	n, err := k.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
@@ -123,20 +158,20 @@ func GetDevicePath(sd *disk.Disk) string {
 func ExtractISCSIInformation(attributes map[string]string) (*disk.Disk, error) {
 	iqn, ok := attributes[disk.ISCSIIQN]
 	if !ok {
-		return nil, fmt.Errorf("Unable to get the IQN from the attribute list")
+		return nil, fmt.Errorf("unable to get the IQN from the attribute list")
 	}
 	ipv4, ok := attributes[disk.ISCSIIP]
 	if !ok {
-		return nil, fmt.Errorf("Unable to get the ipv4 from the attribute list")
+		return nil, fmt.Errorf("unable to get the ipv4 from the attribute list")
 	}
 	port, ok := attributes[disk.ISCSIPORT]
 	if !ok {
-		return nil, fmt.Errorf("Unable to get the port from the attribute list")
+		return nil, fmt.Errorf("unable to get the port from the attribute list")
 	}
 
 	nPort, err := strconv.Atoi(port)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid port number: %s, error: %v", port, err)
+		return nil, fmt.Errorf("invalid port number: %s, error: %v", port, err)
 	}
 
 	return &disk.Disk{
@@ -144,6 +179,20 @@ func ExtractISCSIInformation(attributes map[string]string) (*disk.Disk, error) {
 		IPv4: ipv4,
 		Port: nPort,
 	}, nil
+}
+
+// Extracts the vpusPerGB as int64 from given string input
+func ExtractBlockVolumePerformanceLevel(attribute string) (int64, error) {
+	vpusPerGB, err := strconv.ParseInt(attribute, 10, 64)
+	if err != nil {
+		return 0, status.Errorf(codes.InvalidArgument, "unable to parse performance level value %s as int64", attribute)
+	}
+	if vpusPerGB != LowCostPerformanceOption && vpusPerGB != BalancedPerformanceOption && vpusPerGB != HigherPerformanceOption {
+		return 0, status.Errorf(codes.InvalidArgument, "invalid performance option : %s provided  for "+
+			"storage class. supported performance options are 0 for low cost, 10 for balanced and 20 for higher"+
+			" performance", attribute)
+	}
+	return vpusPerGB, nil
 }
 
 func ExtractISCSIInformationFromMountPath(logger *zap.SugaredLogger, diskPath []string) (*disk.Disk, error) {
@@ -228,11 +277,11 @@ func FormatBytes(inputBytes int64) string {
 
 func ValidateFsType(logger *zap.SugaredLogger, fsType string) string {
 	defaultFsType := "ext4"
-	if fsType == "ext4" || fsType == "ext3" {
+	if fsType == "ext4" || fsType == "ext3" || fsType == "xfs" {
 		return fsType
 	} else if fsType != "" {
 		//TODO: Remove this code when we support other than ext4 || ext3.
-		logger.With("fsType", fsType).Warn("Supporting only 'ext4' as fsType.")
+		logger.With("fsType", fsType).Warn("Supporting only 'ext4/ext3/xfs' as fsType.")
 		return defaultFsType
 	} else {
 		//No fsType provided returning ext4
@@ -326,4 +375,115 @@ func RoundUpSize(volumeSizeBytes int64, allocationUnitBytes int64) int64 {
 
 func RoundUpMinSize() int64 {
 	return RoundUpSize(MinimumVolumeSizeInBytes, 1*client.GiB)
+}
+
+func IsFipsEnabled() (string, error) {
+	command := exec.Command(CAT_COMMAND, FIPS_ENABLED_FILE_PATH)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, CAT_COMMAND, string(output))
+	}
+
+	return string(output), nil
+}
+func IsInTransitEncryptionPackageInstalled() (bool, error) {
+	args := []string{"-q", InTransitEncryptionPackageName}
+	command := exec.Command(RPM_COMMAND, args...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, RPM_COMMAND, string(output))
+	}
+
+	if len(output) > 0 {
+		rpmSearchOutput := string(output)
+		if strings.Contains(rpmSearchOutput, InTransitEncryptionPackageName) && !strings.Contains(rpmSearchOutput, "not installed") {
+			return true, nil
+		}
+		return false, nil
+	}
+	return false, nil
+}
+
+func FindMount(target string) ([]string, error) {
+	mountArgs := []string{"-n", "-o", "SOURCE", "-T", target}
+	command := exec.Command(FINDMNT_COMMAND, mountArgs...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("findmnt failed: %v\narguments: %s\nOutput: %v\n", err, mountArgs, string(output))
+	}
+
+	sources := strings.Fields(string(output))
+	return sources, nil
+}
+
+func Rescan(logger *zap.SugaredLogger, devicePath string) error {
+
+	lsblkargs := []string{"-n", "-o", "NAME", devicePath}
+	lsblkcmd := exec.Command("lsblk", lsblkargs...)
+	lsblkoutput, err := lsblkcmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Failed to find device name associated with devicePath %s", devicePath)
+	}
+	deviceName := strings.TrimSpace(string(lsblkoutput))
+	if strings.HasPrefix(deviceName, "/dev/") {
+		deviceName = strings.TrimPrefix(deviceName, "/dev/")
+	}
+	logger.With("deviceName", deviceName).Info("Rescanning")
+
+	// run command dd iflag=direct if=/dev/<device_name> of=/dev/null count=1
+	// https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/rescanningdisk.htm#Rescanni
+	devicePathFileArg := fmt.Sprintf("if=%s", devicePath)
+	args := []string{"iflag=direct", devicePathFileArg, "of=/dev/null", "count=1"}
+	cmd := exec.Command("dd", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, "dd", string(output))
+	}
+	logger.With("command", "dd", "output", string(output)).Debug("dd output")
+	// run command echo 1 | tee /sys/class/block/%s/device/rescan
+	// https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/rescanningdisk.htm#Rescanni
+	cmdStr := fmt.Sprintf("echo 1 | tee /sys/class/block/%s/device/rescan", deviceName)
+	cmd = exec.Command("bash", "-c", cmdStr)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, cmdStr, string(output))
+	}
+	logger.With("command", cmdStr, "output", string(output)).Debug("rescan output")
+
+	return nil
+}
+
+func GetBlockSizeBytes(logger *zap.SugaredLogger, devicePath string) (int64, error) {
+	args := []string{"--getsize64", devicePath}
+	cmd := exec.Command("blockdev", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return -1, fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, "blockdev", string(output))
+	}
+	strOut := strings.TrimSpace(string(output))
+	logger.With("devicePath", devicePath, "command", "blockdev", "output", strOut).Debugf("Get block device size in bytes successful")
+	gotSizeBytes, err := strconv.ParseInt(strOut, 10, 64)
+	if err != nil {
+		return -1, fmt.Errorf("failed to parse size %s into an int64 size", strOut)
+	}
+	return gotSizeBytes, nil
+}
+
+func ValidateFssId(id string) *FSSVolumeHandler {
+	volumeHandler := &FSSVolumeHandler{"", "", ""}
+	if id == "" {
+		return volumeHandler
+	}
+	volumeHandlerSlice := strings.Split(id, ":")
+	const numOfParamsFromVolumeHandle = 3
+	if len(volumeHandlerSlice) == numOfParamsFromVolumeHandle {
+		if net.ParseIP(volumeHandlerSlice[1]) != nil {
+			volumeHandler.FilesystemOcid = volumeHandlerSlice[0]
+			volumeHandler.MountTargetIPAddress = volumeHandlerSlice[1]
+			volumeHandler.FsExportPath = volumeHandlerSlice[2]
+			return volumeHandler
+		}
+		return volumeHandler
+	}
+	return volumeHandler
 }

@@ -34,6 +34,7 @@ rules:
   - list
   - watch
   - patch
+  - get
 
 - apiGroups:
   - ""
@@ -92,6 +93,18 @@ rules:
   - create
 
 - apiGroups:
+    - "coordination.k8s.io"
+  resources:
+    - leases
+  verbs:
+    - get
+    - create
+    - update
+    - delete
+    - patch
+    - watch
+
+- apiGroups:
   - ""
   resources:
   - configmaps
@@ -118,6 +131,9 @@ rules:
   - serviceaccounts
   verbs:
   - create
+  - list
+  - get
+  - watch
 - apiGroups:
   - ""
   resources:

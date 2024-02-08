@@ -38,7 +38,7 @@ else
     VERSION   ?= ${VERSION}
 endif
 
-RELEASE = v0.13.0
+RELEASE = v1.27.0
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -99,6 +99,11 @@ vendor:
 .PHONY: test
 test:
 	@./hack/test.sh $(SRC_DIRS)
+
+.PHONY: coverage
+coverage: test
+	GO111MODULE=off go tool cover -html=coverage.out -o coverage.html
+	GO111MODULE=off go tool cover -func=coverage.out > coverage.txt
 
 # Run the canary tests - in single run mode.
 .PHONY: canary-run-once
@@ -181,6 +186,10 @@ version:
 
 .PHONY: build-local
 build-local: build
+
+.PHONY: test-local
+test-local: build \
+			make coverage image
 
 .PHONY: run-ccm-e2e-tests-local
 run-ccm-e2e-tests-local:

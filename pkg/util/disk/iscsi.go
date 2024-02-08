@@ -23,9 +23,8 @@ import (
 	"strconv"
 
 	"go.uber.org/zap"
+	"k8s.io/mount-utils"
 	"k8s.io/utils/exec"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
 )
 
 const (
@@ -56,11 +55,6 @@ var diskByPathPattern = regexp.MustCompile(
 type Interface interface {
 	// AddToDB adds the iSCSI node record for the target.
 	AddToDB() error
-
-	// DeviceOpened determines if the device is in use elsewhere
-	// on the system, i.e. still mounted.
-	DeviceOpened(pathname string) (bool, error)
-
 	// FormatAndMount formats the given disk, if needed, and mounts it.  That is
 	// if the disk is not formatted and it is not being mounted as read-only it
 	// will format it first then mount it. Otherwise, if the disk is already
@@ -78,6 +72,10 @@ type Interface interface {
 	// Logout logs out the iSCSI target.
 	Logout() error
 
+	DeviceOpened(pathname string) (bool, error)
+	// updates the queue depth for iSCSI target
+	UpdateQueueDepth() error
+
 	// RemoveFromDB removes the iSCSI target from the database.
 	RemoveFromDB() error
 
@@ -91,9 +89,7 @@ type Interface interface {
 
 	Resize(devicePath string, volumePath string) (bool, error)
 
-	Rescan(devicePath string) error
-
-	GetBlockSizeBytes(devicePath string) (int64, error)
+	GetDiskFormat(devicePath string) (string, error)
 }
 
 // iSCSIMounter implements Interface.
@@ -108,7 +104,7 @@ type iSCSIMounter struct {
 	logger       *zap.SugaredLogger
 }
 
-//Disk interface
+// Disk interface
 type Disk struct {
 	IQN  string
 	IPv4 string
@@ -139,16 +135,16 @@ func newWithMounter(logger *zap.SugaredLogger, mounter mount.Interface, iqn, ipv
 
 // New creates a new iSCSI handler.
 func New(logger *zap.SugaredLogger, iqn, ipv4 string, port int) Interface {
-	return newWithMounter(logger, mount.New(logger, mountCommand), iqn, ipv4, port)
+	return newWithMounter(logger, mount.New(mountCommand), iqn, ipv4, port)
 }
 
-//NewFromISCSIDisk creates a new iSCSI handler from ISCSIDisk.
+// NewFromISCSIDisk creates a new iSCSI handler from ISCSIDisk.
 func NewFromISCSIDisk(logger *zap.SugaredLogger, sd *Disk) Interface {
 	return &iSCSIMounter{
 		disk: sd,
 
 		runner:  exec.New(),
-		mounter: mount.New(logger, mountCommand),
+		mounter: mount.New(mountCommand),
 		logger:  logger,
 	}
 }
@@ -184,7 +180,7 @@ func FindFromDevicePath(logger *zap.SugaredLogger, mountDevice string) ([]string
 // NewFromMountPointPath gets /dev/disk/by-path/ip-<ip>:<port>-iscsi-<IQN>-lun-1
 // from the given mount point path.
 func NewFromMountPointPath(logger *zap.SugaredLogger, mountPath string) (Interface, error) {
-	mounter := mount.New(logger, mountCommand)
+	mounter := mount.New(mountCommand)
 	mountPoint, err := getMountPointForPath(mounter, mountPath)
 	if err != nil {
 		return nil, err
@@ -217,7 +213,7 @@ func FindFromMountPointPath(logger *zap.SugaredLogger, diskByPaths []string) ([]
 
 // GetDiskPathFromMountPath resolves a directory to a block device
 func GetDiskPathFromMountPath(logger *zap.SugaredLogger, mountPath string) ([]string, error) {
-	mounter := mount.New(logger, mountCommand)
+	mounter := mount.New(mountCommand)
 	mountPoint, err := getMountPointForPath(mounter, mountPath)
 	if err != nil {
 		return nil, err
@@ -330,6 +326,25 @@ func (c *iSCSIMounter) Logout() error {
 	return nil
 }
 
+func (c *iSCSIMounter) UpdateQueueDepth() error {
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Updating queue depth to 128.")
+
+	_, err := c.iscsiadm(
+		"-m", "node",
+		"-T", c.disk.IQN,
+		"-p", c.disk.Target(),
+		"-o", "update",
+		"-n", "node.session.queue_depth",
+		"-v", "128")
+	if err != nil {
+		return fmt.Errorf("iscsi: error updating queue depth in target: %v", err)
+	}
+
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Updated queue depth.")
+
+	return nil
+}
+
 func (c *iSCSIMounter) RemoveFromDB() error {
 	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Removing from database.")
 	_, err := c.iscsiadm(
@@ -346,15 +361,10 @@ func (c *iSCSIMounter) RemoveFromDB() error {
 	return nil
 }
 
-func (c *iSCSIMounter) DeviceOpened(path string) (bool, error) {
-	return c.mounter.DeviceOpened(path)
-}
-
 func (c *iSCSIMounter) FormatAndMount(source string, target string, fstype string, options []string) error {
 	safeMounter := &mount.SafeFormatAndMount{
 		Interface: c.mounter,
-		Runner:    c.runner,
-		Logger:    c.logger,
+		Exec:      c.runner,
 	}
 	return formatAndMount(source, target, fstype, options, safeMounter)
 }
@@ -363,11 +373,14 @@ func formatAndMount(source string, target string, fstype string, options []strin
 	return sm.FormatAndMount(source, target, fstype, options)
 }
 
+func (c *iSCSIMounter) GetDiskFormat(disk string) (string, error) {
+	return getDiskFormat(c.runner, disk, c.logger)
+}
+
 func (c *iSCSIMounter) Mount(source string, target string, fstype string, options []string) error {
 	safeMounter := &mount.SafeFormatAndMount{
 		Interface: c.mounter,
-		Runner:    c.runner,
-		Logger:    c.logger,
+		Exec:      c.runner,
 	}
 	return mnt(source, target, fstype, options, safeMounter)
 }
@@ -375,58 +388,23 @@ func (c *iSCSIMounter) Mount(source string, target string, fstype string, option
 func mnt(source string, target string, fstype string, options []string, sm *mount.SafeFormatAndMount) error {
 	return sm.Mount(source, target, fstype, options)
 }
+
+func (c *iSCSIMounter) DeviceOpened(pathname string) (bool, error) {
+	return deviceOpened(pathname, c.logger)
+}
+
 func (c *iSCSIMounter) UnmountPath(path string) error {
-	return mount.UnmountPath(c.logger, path, c.mounter)
+	return UnmountPath(c.logger, path, c.mounter)
 }
 
 func (c *iSCSIMounter) Resize(devicePath string, volumePath string) (bool, error) {
-	safeMounter := &mount.SafeFormatAndMount{
-		Interface: c.mounter,
-		Runner:    c.runner,
-		Logger:    c.logger,
-	}
-	return resize(devicePath, volumePath, safeMounter)
-}
-
-func resize(devicePath string, volumePath string, sm *mount.SafeFormatAndMount) (bool, error) {
-	return sm.Resize(devicePath, volumePath)
-}
-
-
-func (c *iSCSIMounter) Rescan(devicePath string) error {
-	safeMounter := &mount.SafeFormatAndMount{
-		Interface: c.mounter,
-		Runner:    c.runner,
-		Logger:    c.logger,
-	}
-	return rescan(devicePath, safeMounter)
-}
-
-func rescan(devicePath string, sm *mount.SafeFormatAndMount) error {
-	return sm.Rescan(devicePath)
-}
-
-func (c *iSCSIMounter) GetBlockSizeBytes(devicePath string) (int64, error) {
-	safeMounter := &mount.SafeFormatAndMount{
-		Interface: c.mounter,
-		Runner:    c.runner,
-		Logger:    c.logger,
-	}
-	return getBlockSizeBytes(devicePath, safeMounter)
-}
-
-func getBlockSizeBytes(devicePath string, sm *mount.SafeFormatAndMount) (int64, error) {
-	return sm.GetBlockSizeBytes(devicePath)
-}
-
-// mountLister is a minimal subset of mount.Interface (used to enable testing).
-type mountLister interface {
-	List() ([]mount.MountPoint, error)
+	resizefs := mount.NewResizeFs(c.runner)
+	return resizefs.Resize(devicePath, volumePath)
 }
 
 // getMountPointForPath returns the mount.MountPoint for a given path. If the
 // given path is not a mount point
-func getMountPointForPath(ml mountLister, path string) (mount.MountPoint, error) {
+func getMountPointForPath(ml mount.Interface, path string) (mount.MountPoint, error) {
 	mountPoints, err := ml.List()
 	if err != nil {
 		return mount.MountPoint{}, err

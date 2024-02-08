@@ -17,12 +17,13 @@ limitations under the License.
 package scheduler
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
-
 	"k8s.io/klog/v2"
+	"k8s.io/utils/clock"
 )
 
 // WorkArgs keeps arguments that will be passed to the function executed by the worker.
@@ -45,17 +46,24 @@ type TimedWorker struct {
 	WorkItem  *WorkArgs
 	CreatedAt time.Time
 	FireAt    time.Time
-	Timer     *time.Timer
+	Timer     clock.Timer
 }
 
-// CreateWorker creates a TimedWorker that will execute `f` not earlier than `fireAt`.
-func CreateWorker(args *WorkArgs, createdAt time.Time, fireAt time.Time, f func(args *WorkArgs) error) *TimedWorker {
+// createWorker creates a TimedWorker that will execute `f` not earlier than `fireAt`.
+func createWorker(ctx context.Context, args *WorkArgs, createdAt time.Time, fireAt time.Time, f func(ctx context.Context, args *WorkArgs) error, clock clock.WithDelayedExecution) *TimedWorker {
 	delay := fireAt.Sub(createdAt)
+	logger := klog.FromContext(ctx)
+	fWithErrorLogging := func() {
+		err := f(ctx, args)
+		if err != nil {
+			logger.Error(err, "NodeLifecycle: timed worker failed")
+		}
+	}
 	if delay <= 0 {
-		go f(args)
+		go fWithErrorLogging()
 		return nil
 	}
-	timer := time.AfterFunc(delay, func() { f(args) })
+	timer := clock.AfterFunc(delay, fWithErrorLogging)
 	return &TimedWorker{
 		WorkItem:  args,
 		CreatedAt: createdAt,
@@ -76,21 +84,23 @@ type TimedWorkerQueue struct {
 	sync.Mutex
 	// map of workers keyed by string returned by 'KeyFromWorkArgs' from the given worker.
 	workers  map[string]*TimedWorker
-	workFunc func(args *WorkArgs) error
+	workFunc func(ctx context.Context, args *WorkArgs) error
+	clock    clock.WithDelayedExecution
 }
 
 // CreateWorkerQueue creates a new TimedWorkerQueue for workers that will execute
 // given function `f`.
-func CreateWorkerQueue(f func(args *WorkArgs) error) *TimedWorkerQueue {
+func CreateWorkerQueue(f func(ctx context.Context, args *WorkArgs) error) *TimedWorkerQueue {
 	return &TimedWorkerQueue{
 		workers:  make(map[string]*TimedWorker),
 		workFunc: f,
+		clock:    clock.RealClock{},
 	}
 }
 
-func (q *TimedWorkerQueue) getWrappedWorkerFunc(key string) func(args *WorkArgs) error {
-	return func(args *WorkArgs) error {
-		err := q.workFunc(args)
+func (q *TimedWorkerQueue) getWrappedWorkerFunc(key string) func(ctx context.Context, args *WorkArgs) error {
+	return func(ctx context.Context, args *WorkArgs) error {
+		err := q.workFunc(ctx, args)
 		q.Lock()
 		defer q.Unlock()
 		if err == nil {
@@ -105,28 +115,29 @@ func (q *TimedWorkerQueue) getWrappedWorkerFunc(key string) func(args *WorkArgs)
 }
 
 // AddWork adds a work to the WorkerQueue which will be executed not earlier than `fireAt`.
-func (q *TimedWorkerQueue) AddWork(args *WorkArgs, createdAt time.Time, fireAt time.Time) {
+func (q *TimedWorkerQueue) AddWork(ctx context.Context, args *WorkArgs, createdAt time.Time, fireAt time.Time) {
 	key := args.KeyFromWorkArgs()
-	klog.V(4).Infof("Adding TimedWorkerQueue item %v at %v to be fired at %v", key, createdAt, fireAt)
+	logger := klog.FromContext(ctx)
+	logger.V(4).Info("Adding TimedWorkerQueue item and to be fired at firedTime", "item", key, "createTime", createdAt, "firedTime", fireAt)
 
 	q.Lock()
 	defer q.Unlock()
 	if _, exists := q.workers[key]; exists {
-		klog.Warningf("Trying to add already existing work for %+v. Skipping.", args)
+		logger.Info("Trying to add already existing work, skipping", "args", args)
 		return
 	}
-	worker := CreateWorker(args, createdAt, fireAt, q.getWrappedWorkerFunc(key))
+	worker := createWorker(ctx, args, createdAt, fireAt, q.getWrappedWorkerFunc(key), q.clock)
 	q.workers[key] = worker
 }
 
 // CancelWork removes scheduled function execution from the queue. Returns true if work was cancelled.
-func (q *TimedWorkerQueue) CancelWork(key string) bool {
+func (q *TimedWorkerQueue) CancelWork(logger klog.Logger, key string) bool {
 	q.Lock()
 	defer q.Unlock()
 	worker, found := q.workers[key]
 	result := false
 	if found {
-		klog.V(4).Infof("Cancelling TimedWorkerQueue item %v at %v", key, time.Now())
+		logger.V(4).Info("Cancelling TimedWorkerQueue item", "item", key, "time", time.Now())
 		if worker != nil {
 			result = true
 			worker.Cancel()

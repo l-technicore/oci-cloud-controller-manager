@@ -1,3 +1,17 @@
+// Copyright 2020 Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package util
 
 import (
@@ -8,8 +22,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/oracle/oci-go-sdk/v65/common"
 	metricErrors "github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -23,7 +39,9 @@ const (
 	Err5XX           = "5XX"
 	ErrValidation    = "VALIDATION_ERROR"
 	ErrLimitExceeded = "LIMIT_EXCEEDED"
+	ErrCtxTimeout    = "CTX_TIMEOUT"
 	Success          = "SUCCESS"
+	BackupCreating   = "CREATING"
 
 	// Components generating errors
 	// Load Balancer
@@ -58,13 +76,18 @@ func GetError(err error) string {
 		return ""
 	}
 
-	re := regexp.MustCompile(`http status code:\s*(\d+)`)
+	// ErrWaitTimeout is the same var in use by wait.PollUntil in AwaitWorkRequest client method
+	if errors.Is(err, wait.ErrWaitTimeout) {
+		return ErrCtxTimeout
+	}
+
+	re := regexp.MustCompile(`(?i)http status code:\s*(\d+)`)
 	if match := re.FindStringSubmatch(cause); match != nil {
 		if status, er := strconv.Atoi(match[1]); er == nil {
 			if status >= 500 {
 				return Err5XX
 			} else if status >= 400 {
-				if strings.Contains(err.Error(), "Service error:LimitExceeded") {
+				if strings.Contains(cause, "LimitExceeded") {
 					return ErrLimitExceeded
 				}
 				if status == 429 {
@@ -82,4 +105,17 @@ func GetMetricDimensionForComponent(err string, component string) string {
 		return ""
 	}
 	return fmt.Sprintf("%s_%s", component, err)
+}
+
+func GetHttpStatusCode(err error) int {
+	statusCode := 200
+	err = metricErrors.Cause(err)
+	if err != nil {
+		if serviceErr, ok := err.(common.ServiceError); ok {
+			statusCode = serviceErr.GetHTTPStatusCode()
+		} else {
+			statusCode = 555 // ¯\_(ツ)_/¯
+		}
+	}
+	return statusCode
 }

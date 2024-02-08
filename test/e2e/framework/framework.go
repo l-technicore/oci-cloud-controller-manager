@@ -1,4 +1,4 @@
-// Copyright 2020 Oracle and/or its affiliates. All rights reserved.
+// Copyright 2018 Oracle and/or its affiliates. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@ package framework
 import (
 	"flag"
 	"fmt"
-	imageutils "k8s.io/kubernetes/test/utils/image"
 	"math/rand"
 	"strings"
 	"time"
+
+	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
 const (
@@ -34,42 +35,56 @@ const (
 	// Some pods can take much longer to get ready due to volume attach/detach latency.
 	slowPodStartTimeout = 15 * time.Minute
 
-	JobCompletionTimeout = 5 * time.Minute
+	JobCompletionTimeout       = 5 * time.Minute
 	deploymentAvailableTimeout = 5 * time.Minute
+	CloneAvailableTimeout      = 10 * time.Minute
 
 	DefaultClusterKubeconfig = "/tmp/clusterkubeconfig"
 	DefaultCloudConfig       = "/tmp/cloudconfig"
 
-	ClassOCI          = "oci"
-	ClassOCICSI       = "oci-bv"
-	ClassOCICSIExpand = "oci-bv-expand"
-	ClassOCIExt3      = "oci-ext3"
-	ClassOCIMntFss    = "oci-fss-mnt"
-	ClassOCISubnetFss = "oci-fss-subnet"
-	MinVolumeBlock    = "50Gi"
-	MaxVolumeBlock    = "100Gi"
-	VolumeFss         = "1Gi"
+	ClassOCI           = "oci"
+	ClassOCICSI        = "oci-bv"
+	ClassCustom        = "oci-bv-custom"
+	ClassOCICSIExpand  = "oci-bv-expand"
+	ClassOCILowCost    = "oci-bv-low"
+	ClassOCIBalanced   = "oci-bal"
+	ClassOCIHigh       = "oci-bv-high"
+	ClassOCIKMS        = "oci-kms"
+	ClassOCIExt3       = "oci-ext3"
+	ClassOCIXfs        = "oci-xfs"
+	ClassFssDynamic    = "oci-file-storage-test"
+	FssProvisionerType = "fss.csi.oraclecloud.com"
+	ClassSnapshot      = "oci-snapshot-sc"
+	MinVolumeBlock     = "50Gi"
+	MaxVolumeBlock     = "100Gi"
+	VolumeFss          = "1Gi"
+
+	VSClassDefault = "oci-snapclass"
 )
 
 var (
-	compartment1      string
-	adlocation        string
-	clusterkubeconfig string // path to kubeconfig file
-	deleteNamespace   bool   // whether or not to delete test namespaces
-	cloudConfigFile   string // path to cloud provider config file
-	nodePortTest      bool   // whether or not to test the connectivity of node ports.
-	ccmSeclistID      string // The ocid of the loadbalancer subnet seclist. Optional.
-	k8sSeclistID      string // The ocid of the k8s worker subnet seclist. Optional.
-	mntTargetOCID     string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
-	nginx             string // Image for nginx
-	agnhost           string // Image for agnhost
-	busyBoxImage      string // Image for busyBoxImage
-	centos            string // Image for centos
-	imagePullRepo     string // Repo to pull images from. Will pull public images if not specified.
-	cmekKMSKey        string //KMS key for CMEK testing
-	nsgOCIDS		  string // Testing CCM NSG feature
-	reservedIP        string // Testing public reserved IP feature
-	volumeHandle      string // The FSS mount volume handle
+	compartment1                  string
+	adlocation                    string
+	clusterkubeconfig             string // path to kubeconfig file
+	deleteNamespace               bool   // whether or not to delete test namespaces
+	cloudConfigFile               string // path to cloud provider config file
+	nodePortTest                  bool   // whether or not to test the connectivity of node ports.
+	ccmSeclistID                  string // The ocid of the loadbalancer subnet seclist. Optional.
+	k8sSeclistID                  string // The ocid of the k8s worker subnet seclist. Optional.
+	mntTargetOCID                 string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
+	mntTargetSubnetOCID           string // mntTargetSubnetOCID is required for testing MT creation in FSS dynamic
+	mntTargetCompartmentOCID      string // mntTargetCompartmentOCID is required for testing MT cross compartment creation in FSS dynamic
+	nginx                         string // Image for nginx
+	agnhost                       string // Image for agnhost
+	busyBoxImage                  string // Image for busyBoxImage
+	centos                        string // Image for centos
+	imagePullRepo                 string // Repo to pull images from. Will pull public images if not specified.
+	cmekKMSKey                    string //KMS key for CMEK testing
+	nsgOCIDS                      string // Testing CCM NSG feature
+	reservedIP                    string // Testing public reserved IP feature
+	architecture                  string
+	volumeHandle                  string // The FSS mount volume handle
+	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
 )
 
 func init() {
@@ -86,13 +101,18 @@ func init() {
 	flag.StringVar(&k8sSeclistID, "k8s-seclist-id", "", "The ocid of the k8s worker subnet seclist. Enables additional seclist rule tests. If specified the 'ccm-seclist-id parameter' is also required.")
 	flag.BoolVar(&deleteNamespace, "delete-namespace", true, "If true tests will delete namespace after completion. It is only designed to make debugging easier, DO NOT turn it off by default.")
 
-	flag.StringVar(&mntTargetOCID, "mnt-target-id", "", "Mount Target ID is specified to identify the mount target to be attached to the volumes")
+	flag.StringVar(&mntTargetOCID, "mnt-target-id", "", "Mount Target ID is required for creating storage class for FSS dynamic testing")
+	flag.StringVar(&mntTargetSubnetOCID, "mnt-target-subnet-id", "", "Mount Target Subnet is required for creating storage class for FSS dynamic testing")
+	flag.StringVar(&mntTargetCompartmentOCID, "mnt-target-compartment-id", "", "Mount Target Compartment is required for creating storage class for FSS dynamic testing with cross compartment")
 	flag.StringVar(&volumeHandle, "volume-handle", "", "FSS volume handle used to mount the File System")
 
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
 	flag.StringVar(&nsgOCIDS, "nsg-ocids", "", "NSG OCIDs to be used to associate to LB")
 	flag.StringVar(&reservedIP, "reserved-ip", "", "Public reservedIP to be used for testing loadbalancer with reservedIP")
+	flag.StringVar(&architecture, "architecture", "", "CPU architecture to be used for testing.")
+
+	flag.StringVar(&staticSnapshotCompartmentOCID, "static-snapshot-compartment-id", "", "Compartment ID for cross compartment snapshot test")
 }
 
 // Framework is the context of the text execution.
@@ -112,11 +132,18 @@ type Framework struct {
 
 	CloudConfigPath string
 
-	MntTargetOcid string
-	CMEKKMSKey    string
-	NsgOCIDS      string
-	ReservedIP    string
-	VolumeHandle  string
+	MntTargetOcid            string
+	MntTargetSubnetOcid      string
+	MntTargetCompartmentOcid string
+	CMEKKMSKey               string
+	NsgOCIDS                 string
+	ReservedIP               string
+	Architecture             string
+
+	VolumeHandle string
+
+	// Compartment ID for cross compartment snapshot test
+	StaticSnapshotCompartmentOcid string
 }
 
 // New creates a new a framework that holds the context of the test
@@ -131,12 +158,15 @@ func NewWithConfig() *Framework {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	f := &Framework{
-		AdLocation:    adlocation,
-		MntTargetOcid: mntTargetOCID,
-		CMEKKMSKey:    cmekKMSKey,
-		NsgOCIDS:	   nsgOCIDS,
-		ReservedIP:    reservedIP,
-		VolumeHandle:  volumeHandle,
+		AdLocation:                    adlocation,
+		MntTargetOcid:                 mntTargetOCID,
+		MntTargetSubnetOcid:           mntTargetSubnetOCID,
+		MntTargetCompartmentOcid:      mntTargetCompartmentOCID,
+		CMEKKMSKey:                    cmekKMSKey,
+		NsgOCIDS:                      nsgOCIDS,
+		ReservedIP:                    reservedIP,
+		VolumeHandle:                  volumeHandle,
+		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -163,14 +193,22 @@ func (f *Framework) Initialize() {
 	Logf("OCI AdLabel: %s", f.AdLabel)
 	f.MntTargetOcid = mntTargetOCID
 	Logf("OCI Mount Target OCID: %s", f.MntTargetOcid)
+	f.MntTargetSubnetOcid = mntTargetSubnetOCID
+	Logf("OCI Mount Target Subnet OCID: %s", f.MntTargetSubnetOcid)
+	f.MntTargetCompartmentOcid = mntTargetCompartmentOCID
+	Logf("OCI Mount Target Compartment OCID: %s", f.MntTargetCompartmentOcid)
 	f.VolumeHandle = volumeHandle
 	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
+	f.StaticSnapshotCompartmentOcid = staticSnapshotCompartmentOCID
+	Logf("Static Snapshot Compartment OCID: %s", f.StaticSnapshotCompartmentOcid)
 	f.CMEKKMSKey = cmekKMSKey
 	Logf("CMEK KMS Key: %s", f.CMEKKMSKey)
 	f.NsgOCIDS = nsgOCIDS
 	Logf("NSG OCIDS: %s", f.NsgOCIDS)
 	f.ReservedIP = reservedIP
 	Logf("Reserved IP: %s", f.ReservedIP)
+	f.Architecture = architecture
+	Logf("Architecture: %s", f.Architecture)
 	f.Compartment1 = compartment1
 	Logf("OCI compartment1 OCID: %s", f.Compartment1)
 	f.setImages()
@@ -179,10 +217,17 @@ func (f *Framework) Initialize() {
 }
 
 func (f *Framework) setImages() {
-	var Agnhost           = "agnhost:2.6"
-	var BusyBoxImage      = "busybox:latest"
-	var Nginx             = "nginx:stable-alpine"
-	var Centos            = "centos:latest"
+	var Agnhost = "agnhost:2.6"
+	var BusyBoxImage = "busybox:latest"
+	var Nginx = "nginx:stable-alpine"
+	var Centos = "centos:latest"
+
+	if architecture == "ARM" {
+		Agnhost = "agnhost-arm:2.6"
+		BusyBoxImage = "busybox-arm:latest"
+		Nginx = "nginx-arm:latest"
+		Centos = "centos-arm:latest"
+	}
 
 	if imagePullRepo != "" {
 		agnhost = fmt.Sprintf("%s%s", imagePullRepo, Agnhost)

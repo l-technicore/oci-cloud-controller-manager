@@ -19,18 +19,25 @@ package storagebackend
 import (
 	"time"
 
+	oteltrace "go.opentelemetry.io/otel/trace"
+
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/server/egressselector"
 	"k8s.io/apiserver/pkg/storage/etcd3"
 	"k8s.io/apiserver/pkg/storage/value"
+	flowcontrolrequest "k8s.io/apiserver/pkg/util/flowcontrol/request"
 )
 
 const (
 	StorageTypeUnset = ""
+	StorageTypeETCD2 = "etcd2"
 	StorageTypeETCD3 = "etcd3"
 
 	DefaultCompactInterval      = 5 * time.Minute
 	DefaultDBMetricPollInterval = 30 * time.Second
+	DefaultHealthcheckTimeout   = 2 * time.Second
+	DefaultReadinessTimeout     = 2 * time.Second
 )
 
 // TransportConfig holds all connection related info,  i.e. equal TransportConfig means equal servers we talk to.
@@ -43,6 +50,8 @@ type TransportConfig struct {
 	TrustedCAFile string
 	// function to determine the egress dialer. (i.e. konnectivity server dialer)
 	EgressLookup egressselector.Lookup
+	// The TracerProvider can add tracing the connection
+	TracerProvider oteltrace.TracerProvider
 }
 
 // Config is configuration for creating a storage backend.
@@ -75,8 +84,33 @@ type Config struct {
 	CountMetricPollPeriod time.Duration
 	// DBMetricPollInterval specifies how often should storage backend metric be updated.
 	DBMetricPollInterval time.Duration
+	// HealthcheckTimeout specifies the timeout used when checking health
+	HealthcheckTimeout time.Duration
+	// ReadycheckTimeout specifies the timeout used when checking readiness
+	ReadycheckTimeout time.Duration
 
 	LeaseManagerConfig etcd3.LeaseManagerConfig
+
+	// StorageObjectCountTracker is used to keep track of the total
+	// number of objects in the storage per resource.
+	StorageObjectCountTracker flowcontrolrequest.StorageObjectCountTracker
+}
+
+// ConfigForResource is a Config specialized to a particular `schema.GroupResource`
+type ConfigForResource struct {
+	// Config is the resource-independent configuration
+	Config
+
+	// GroupResource is the relevant one
+	GroupResource schema.GroupResource
+}
+
+// ForResource specializes to the given resource
+func (config *Config) ForResource(resource schema.GroupResource) *ConfigForResource {
+	return &ConfigForResource{
+		Config:        *config,
+		GroupResource: resource,
+	}
 }
 
 func NewDefaultConfig(prefix string, codec runtime.Codec) *Config {
@@ -86,6 +120,9 @@ func NewDefaultConfig(prefix string, codec runtime.Codec) *Config {
 		Codec:                codec,
 		CompactionInterval:   DefaultCompactInterval,
 		DBMetricPollInterval: DefaultDBMetricPollInterval,
+		HealthcheckTimeout:   DefaultHealthcheckTimeout,
+		ReadycheckTimeout:    DefaultReadinessTimeout,
 		LeaseManagerConfig:   etcd3.NewDefaultLeaseManagerConfig(),
+		Transport:            TransportConfig{TracerProvider: oteltrace.NewNoopTracerProvider()},
 	}
 }

@@ -20,19 +20,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/oracle/oci-go-sdk/v65/filestorage"
+	"github.com/oracle/oci-go-sdk/v65/identity"
 	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/v6/controller"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/core"
-	"github.com/oracle/oci-go-sdk/v31/filestorage"
-	"github.com/oracle/oci-go-sdk/v31/identity"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/v9/controller"
 )
 
 var (
@@ -54,6 +53,11 @@ var (
 // MockBlockStorageClient mocks BlockStorage client implementation
 type MockBlockStorageClient struct {
 	VolumeState core.VolumeLifecycleStateEnum
+}
+
+// AwaitVolumeCloneAvailableOrTimeout implements client.BlockStorageInterface.
+func (c *MockBlockStorageClient) AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
+	return &core.Volume{}, nil
 }
 
 func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
@@ -85,8 +89,51 @@ func (c *MockBlockStorageClient) DeleteVolume(ctx context.Context, id string) er
 	return nil
 }
 
+func (c *MockBlockStorageClient) AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id string) (*core.VolumeBackup, error) {
+	return &core.VolumeBackup{}, nil
+}
+
+func (c *MockBlockStorageClient) CreateVolumeBackup(ctx context.Context, details core.CreateVolumeBackupDetails) (*core.VolumeBackup, error) {
+	id := "oc1.volumebackup1.xxxx"
+	return &core.VolumeBackup{
+		Id: &id,
+	}, nil
+}
+
+func (c *MockBlockStorageClient) DeleteVolumeBackup(ctx context.Context, id string) error {
+	return nil
+}
+
+func (c *MockBlockStorageClient) GetVolumeBackup(ctx context.Context, id string) (*core.VolumeBackup, error) {
+	return &core.VolumeBackup{
+		Id: &id,
+	}, nil
+}
+
+func (c *MockBlockStorageClient) GetVolumeBackupsByName(ctx context.Context, snapshotName, compartmentID string) ([]core.VolumeBackup, error) {
+	return []core.VolumeBackup{}, nil
+}
+
 // MockFileStorageClient mocks FileStorage client implementation.
 type MockFileStorageClient struct{}
+
+func (c *MockFileStorageClient) GetMountTarget(ctx context.Context, id string) (*filestorage.MountTarget, error) {
+	return nil, nil
+}
+
+func (c *MockFileStorageClient) GetMountTargetSummaryByDisplayName(ctx context.Context, compartmentID, ad, mountTargetName string) (bool, []filestorage.MountTargetSummary, error) {
+	return false, nil, nil
+}
+
+// CreateMountTarget mocks the FileStorage CreateMountTarget implementation
+func (c *MockFileStorageClient) CreateMountTarget(ctx context.Context, details filestorage.CreateMountTargetDetails) (*filestorage.MountTarget, error) {
+	return nil, nil
+}
+
+// DeleteMountTarget mocks the FileStorage DeleteMountTarget implementation
+func (c *MockFileStorageClient) DeleteMountTarget(ctx context.Context, id string) error {
+	return nil
+}
 
 // CreateFileSystem mocks the FileStorage CreateFileSystem implementation.
 func (c *MockFileStorageClient) CreateFileSystem(ctx context.Context, details filestorage.CreateFileSystemDetails) (*filestorage.FileSystem, error) {
@@ -108,12 +155,16 @@ func (c *MockFileStorageClient) AwaitFileSystemActive(ctx context.Context, logge
 	}, nil
 }
 
-func (c *MockFileStorageClient) GetFileSystemSummaryByDisplayName(ctx context.Context, compartmentID, ad, displayName string) (*filestorage.FileSystemSummary, error) {
-	return &filestorage.FileSystemSummary{
+func (c *MockFileStorageClient) GetFileSystemSummaryByDisplayName(ctx context.Context, compartmentID, ad, displayName string) (bool, []filestorage.FileSystemSummary, error) {
+	filesystemSummaries := make([]filestorage.FileSystemSummary, 0)
+
+	filesystemSummaries = append(filesystemSummaries, filestorage.FileSystemSummary{
 		Id:             &fileSystemID,
 		DisplayName:    &displayName,
 		LifecycleState: filestorage.FileSystemSummaryLifecycleStateActive,
-	}, nil
+	})
+
+	return true, filesystemSummaries, nil
 }
 
 // DeleteFileSystem mocks the FileStorage DeleteFileSystem implementation
@@ -148,10 +199,11 @@ func (c *MockFileStorageClient) AwaitExportActive(ctx context.Context, logger *z
 	}, nil
 }
 
-func (c *MockFileStorageClient) FindExport(ctx context.Context, compartmentID, fsID, exportSetID string) (*filestorage.ExportSummary, error) {
+func (c *MockFileStorageClient) FindExport(ctx context.Context, fsID, path, exportSetID string) (*filestorage.ExportSummary, error) {
 	return &filestorage.ExportSummary{
 		Id:             &exportID,
 		ExportSetId:    &exportSetID,
+		Path:           &path,
 		FileSystemId:   &fsID,
 		LifecycleState: filestorage.ExportSummaryLifecycleStateActive,
 	}, nil
@@ -282,7 +334,7 @@ func (p *MockProvisionerClient) Networking() client.NetworkingInterface {
 }
 
 // Networking mocks client VirtualNetwork implementation.
-func (p *MockProvisionerClient) LoadBalancer() client.LoadBalancerInterface {
+func (p *MockProvisionerClient) LoadBalancer(*zap.SugaredLogger, string, string, *authv1.TokenRequest) client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
 }
 
@@ -317,15 +369,19 @@ func (p *MockProvisionerClient) TenancyOCID() string {
 
 type MockLoadBalancerClient struct{}
 
-func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details loadbalancer.CreateLoadBalancerDetails) (string, error) {
-	return "", nil
-}
-
-func (c *MockLoadBalancerClient) GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.LoadBalancer, error) {
+func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartmentId, lbId string) ([]*client.GenericWorkRequest, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error) {
+func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) GetLoadBalancer(ctx context.Context, id string) (*client.GenericLoadBalancer, error) {
+	return nil, nil
+}
+
+func (c *MockLoadBalancerClient) GetLoadBalancerByName(ctx context.Context, compartmentID string, name string) (*client.GenericLoadBalancer, error) {
 	return nil, nil
 }
 
@@ -333,19 +389,19 @@ func (c *MockLoadBalancerClient) DeleteLoadBalancer(ctx context.Context, id stri
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) GetCertificateByName(ctx context.Context, lbID, name string) (*loadbalancer.Certificate, error) {
+func (c *MockLoadBalancerClient) GetCertificateByName(ctx context.Context, lbID string, name string) (*client.GenericCertificate, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) CreateCertificate(ctx context.Context, lbID string, cert loadbalancer.CertificateDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateCertificate(ctx context.Context, lbID string, cert *client.GenericCertificate) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateBackendSet(ctx context.Context, lbID string, name string, details *client.GenericBackendSetDetails) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateBackendSet(ctx context.Context, lbID string, name string, details *client.GenericBackendSetDetails) (string, error) {
 	return "", nil
 }
 
@@ -353,11 +409,11 @@ func (c *MockLoadBalancerClient) DeleteBackendSet(ctx context.Context, lbID, nam
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID string, name string, details *client.GenericListener) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID string, name string, details *client.GenericListener) (string, error) {
 	return "", nil
 }
 
@@ -365,15 +421,15 @@ func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name 
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, lbID string, details loadbalancer.UpdateLoadBalancerShapeDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(context.Context, string, *client.GenericUpdateLoadBalancerShapeDetails) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
+func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*client.GenericWorkRequest, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, s string, details loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, string, []string) (string, error) {
 	return "", nil
 }
 

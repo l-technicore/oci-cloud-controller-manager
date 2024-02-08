@@ -19,10 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v31/core"
 	"go.uber.org/zap"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,6 +34,9 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/v65/core"
 )
 
 // metadata labeling for placement info
@@ -119,14 +119,14 @@ func (nic *NodeInfoController) Run(stopCh <-chan struct{}) {
 	wait.Until(nic.runWorker, time.Second, stopCh)
 }
 
-//A function to run the worker which will process items in the queue
+// A function to run the worker which will process items in the queue
 func (nic *NodeInfoController) runWorker() {
 	for nic.processNextItem() {
 
 	}
 }
 
-//Used to sequentially process the keys present in the queue
+// Used to sequentially process the keys present in the queue
 func (nic *NodeInfoController) processNextItem() bool {
 
 	key, quit := nic.queue.Get()
@@ -147,8 +147,8 @@ func (nic *NodeInfoController) processNextItem() bool {
 	return true
 }
 
-//A function which is responsible for adding the fault domain label and CompartmentID annotation to the node if it
-//is not already present. Also cache the instance information
+// A function which is responsible for adding the fault domain label and CompartmentID annotation to the node if it
+// is not already present. Also cache the instance information
 func (nic *NodeInfoController) processItem(key string) error {
 
 	logger := nic.logger.With("node", key)
@@ -157,6 +157,12 @@ func (nic *NodeInfoController) processItem(key string) error {
 
 	if err != nil {
 		return err
+	}
+
+	// if node has required labels already, don't process agin
+	if validateNodeHasRequiredLabels(cacheNode) {
+		logger.With("nodeName", cacheNode.Name).Debugf("The node has the fault domain label and compartmentID annotation already, will not process")
+		return nil
 	}
 
 	instance, err := getInstanceByNode(cacheNode, nic, logger)
@@ -188,12 +194,11 @@ func (nic *NodeInfoController) processItem(key string) error {
 }
 
 func getPatchBytes(cacheNode *v1.Node, instance *core.Instance, logger *zap.SugaredLogger) []byte {
-	_, isFaultDomainLabelPresent := cacheNode.ObjectMeta.Labels[FaultDomainLabel]
-	_, isCompartmentIDAnnotationPresent := cacheNode.ObjectMeta.Annotations[CompartmentIDAnnotation]
-	if isFaultDomainLabelPresent && isCompartmentIDAnnotationPresent {
-		logger.Debugf("The node %s has fault domain label and compartmentID annotation already, will not process", cacheNode.Name)
+	if validateNodeHasRequiredLabels(cacheNode) {
 		return nil
 	}
+	_, isFaultDomainLabelPresent := cacheNode.ObjectMeta.Labels[FaultDomainLabel]
+	_, isCompartmentIDAnnotationPresent := cacheNode.ObjectMeta.Annotations[CompartmentIDAnnotation]
 
 	var nodePatchBytes []byte
 	if isFaultDomainLabelPresent {
@@ -240,4 +245,13 @@ func getInstanceByNode(cacheNode *v1.Node, nic *NodeInfoController, logger *zap.
 		return nil, err
 	}
 	return instance, nil
+}
+
+func validateNodeHasRequiredLabels(node *v1.Node) bool {
+	_, isFaultDomainLabelPresent := node.ObjectMeta.Labels[FaultDomainLabel]
+	_, isCompartmentIDAnnotationPresent := node.ObjectMeta.Annotations[CompartmentIDAnnotation]
+	if isFaultDomainLabelPresent && isCompartmentIDAnnotationPresent {
+		return true
+	}
+	return false
 }

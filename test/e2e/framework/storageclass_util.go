@@ -16,7 +16,8 @@ package framework
 
 import (
 	"context"
-	storagev1beta1 "k8s.io/api/storage/v1beta1"
+	v1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -25,27 +26,29 @@ import (
 // does not actually create the storage class. The default storage class has the same name
 // as the jig
 func (f *CloudProviderFramework) newStorageClassTemplate(name string, provisionerType string,
-	parameters map[string]string, testLabels map[string]string, volumeBindingMode *storagev1beta1.VolumeBindingMode,
-	allowVolumeExpansion bool) *storagev1beta1.StorageClass {
-	return &storagev1beta1.StorageClass{
+	parameters map[string]string, testLabels map[string]string, volumeBindingMode *storagev1.VolumeBindingMode,
+	allowVolumeExpansion bool, pvReclaimPolicy *v1.PersistentVolumeReclaimPolicy, mountOptions []string) *storagev1.StorageClass {
+	return &storagev1.StorageClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "StorageClass",
-			APIVersion: "storage.k8s.io/v1beta1",
+			APIVersion: "storage.k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: testLabels,
 		},
-		Provisioner:       provisionerType,
-		Parameters:        parameters,
-		VolumeBindingMode: volumeBindingMode,
+		Provisioner:          provisionerType,
+		Parameters:           parameters,
+		VolumeBindingMode:    volumeBindingMode,
 		AllowVolumeExpansion: &allowVolumeExpansion,
+		ReclaimPolicy:        pvReclaimPolicy,
+		MountOptions:         mountOptions,
 	}
 }
 
 // DeleteStorageClass deletes a storage class given the name
-func (f* CloudProviderFramework) DeleteStorageClass(name string) error {
-	err := f.ClientSet.StorageV1().StorageClasses().Delete(context.Background(),name,metav1.DeleteOptions{})
+func (f *CloudProviderFramework) DeleteStorageClass(name string) error {
+	err := f.ClientSet.StorageV1().StorageClasses().Delete(context.Background(), name, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -54,18 +57,26 @@ func (f* CloudProviderFramework) DeleteStorageClass(name string) error {
 
 // CreateStorageClassOrFail creates a new storage class based on the jig's defaults.
 func (f *CloudProviderFramework) CreateStorageClassOrFail(name string, provisionerType string,
-	parameters map[string]string, testLabels map[string]string, bindingMode string, allowVolumeExpansion bool) string {
-	volumeBindingMode := storagev1beta1.VolumeBindingImmediate
+	parameters map[string]string, testLabels map[string]string, bindingMode string, allowVolumeExpansion bool, reclaimPolicy string, mountOptions []string) string {
+	volumeBindingMode := storagev1.VolumeBindingImmediate
 	if bindingMode == "WaitForFirstConsumer" {
-		volumeBindingMode = storagev1beta1.VolumeBindingWaitForFirstConsumer
+		volumeBindingMode = storagev1.VolumeBindingWaitForFirstConsumer
 	}
-	classTemp := f.newStorageClassTemplate(name, provisionerType, parameters, testLabels, &volumeBindingMode, allowVolumeExpansion)
+	pvReclaimPolicy := v1.PersistentVolumeReclaimDelete
+	if reclaimPolicy == "Retain" {
+		pvReclaimPolicy = v1.PersistentVolumeReclaimRetain
+	}
+	if mountOptions == nil {
+		mountOptions = []string{}
+	}
 
-	class, err := f.ClientSet.StorageV1beta1().StorageClasses().Create(context.Background(), classTemp, metav1.CreateOptions{})
+	classTemp := f.newStorageClassTemplate(name, provisionerType, parameters, testLabels, &volumeBindingMode, allowVolumeExpansion, &pvReclaimPolicy, mountOptions)
+
+	class, err := f.ClientSet.StorageV1().StorageClasses().Create(context.Background(), classTemp, metav1.CreateOptions{})
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			Logf("Storage Class already exists. Updating existing storage class.")
-			class , err = f.UpdateStorageClassOrFail(classTemp, allowVolumeExpansion, nil)
+			class, err = f.UpdateStorageClassOrFail(classTemp, allowVolumeExpansion, nil)
 			if err != nil {
 				Logf("Error: %v", err)
 			}
@@ -77,8 +88,8 @@ func (f *CloudProviderFramework) CreateStorageClassOrFail(name string, provision
 	return class.Name
 }
 
-func (f *CloudProviderFramework) UpdateStorageClassOrFail(storageClass *storagev1beta1.StorageClass, allowVolumeExpansion bool,
-	tweak func(sc *storagev1beta1.StorageClass)) (*storagev1beta1.StorageClass, error) {
+func (f *CloudProviderFramework) UpdateStorageClassOrFail(storageClass *storagev1.StorageClass, allowVolumeExpansion bool,
+	tweak func(sc *storagev1.StorageClass)) (*storagev1.StorageClass, error) {
 
 	if tweak != nil {
 		tweak(storageClass)
@@ -86,7 +97,7 @@ func (f *CloudProviderFramework) UpdateStorageClassOrFail(storageClass *storagev
 
 	Logf("Updating a SC %q", storageClass.Name)
 
-	oldSC, err := f.ClientSet.StorageV1beta1().StorageClasses().Get(context.Background(), storageClass.Name,
+	oldSC, err := f.ClientSet.StorageV1().StorageClasses().Get(context.Background(), storageClass.Name,
 		metav1.GetOptions{})
 	if err != nil {
 		Failf("Failed to find StorageClass %v : %q", storageClass.Name, err)
@@ -95,7 +106,51 @@ func (f *CloudProviderFramework) UpdateStorageClassOrFail(storageClass *storagev
 	newSC := oldSC.DeepCopy()
 	newSC.AllowVolumeExpansion = &allowVolumeExpansion
 
-	class , err := f.ClientSet.StorageV1beta1().StorageClasses().Update(context.Background(), newSC,
+	class, err := f.ClientSet.StorageV1().StorageClasses().Update(context.Background(), newSC,
 		metav1.UpdateOptions{})
 	return class, err
+}
+
+// NewCSIDriverTemplate returns the default template for this jig, but
+// does not actually create the CSI Driver.
+func (f *CloudProviderFramework) newCSIDriverTemplate(name string, testLabels map[string]string, fsGroupPolicy storagev1.FSGroupPolicy) *storagev1.CSIDriver {
+	return &storagev1.CSIDriver{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "CSIDriver",
+			APIVersion: "storage.k8s.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: testLabels,
+		},
+		Spec: storagev1.CSIDriverSpec{
+			FSGroupPolicy: &fsGroupPolicy,
+		},
+	}
+}
+
+// CreateCSIDriverOrFail creates a new storage class based on the jig's defaults.
+func (f *CloudProviderFramework) CreateCSIDriverOrFail(name string,
+	testLabels map[string]string, fsGroupPolicy storagev1.FSGroupPolicy) string {
+
+	csiDriverTemp := f.newCSIDriverTemplate(name, testLabels, fsGroupPolicy)
+
+	csiDriver, err := f.ClientSet.StorageV1().CSIDrivers().Create(context.Background(), csiDriverTemp, metav1.CreateOptions{})
+	if err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			Logf("CSI Driver already exists. Continuing with the existing one.")
+			return csiDriver.Name
+		}
+		Failf("Failed to create CSI Driver %q: %v", name, err)
+	}
+	return csiDriver.Name
+}
+
+// DeleteCSIDriver deletes a CSI Driver given the name
+func (f *CloudProviderFramework) DeleteCSIDriver(name string) error {
+	err := f.ClientSet.StorageV1().CSIDrivers().Delete(context.Background(), name, metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
 }

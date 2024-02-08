@@ -18,16 +18,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
+	"k8s.io/mount-utils"
 )
-
-type mockMountLister struct {
-	mps []mount.MountPoint
-}
-
-func (ml *mockMountLister) List() ([]mount.MountPoint, error) {
-	return ml.mps, nil
-}
 
 func TestGetMountPointForPath(t *testing.T) {
 	testCases := []struct {
@@ -65,10 +57,9 @@ func TestGetMountPointForPath(t *testing.T) {
 		},
 	}
 
-	mock := &mockMountLister{}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mock.mps = tt.mps
+			mock := mount.NewFakeMounter(tt.mps)
 			result, err := getMountPointForPath(mock, tt.path)
 			if err != tt.err {
 				t.Fatalf("getMountPointForPath(mockLister, %q) => error: %v; expected %v", tt.path, err, tt.err)

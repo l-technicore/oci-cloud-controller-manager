@@ -25,8 +25,8 @@ import (
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/v65/common"
 )
 
 func TestSortAndCombineActions(t *testing.T) {
@@ -40,46 +40,46 @@ func TestSortAndCombineActions(t *testing.T) {
 				&BackendSetAction{
 					name:       "TCP-80",
 					actionType: Create,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&BackendSetAction{
 					name:       "TCP-443",
 					actionType: Create,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 			},
 			listenerActions: []Action{
 				&ListenerAction{
 					name:       "TCP-443",
 					actionType: Create,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&ListenerAction{
 					name:       "TCP-80",
 					actionType: Create,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 			},
 			expected: []Action{
 				&BackendSetAction{
 					name:       "TCP-443",
 					actionType: Create,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&ListenerAction{
 					name:       "TCP-443",
 					actionType: Create,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&BackendSetAction{
 					name:       "TCP-80",
 					actionType: Create,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&ListenerAction{
 					name:       "TCP-80",
 					actionType: Create,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 			},
 		},
@@ -88,106 +88,106 @@ func TestSortAndCombineActions(t *testing.T) {
 				&BackendSetAction{
 					name:       "TCP-80",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&BackendSetAction{
 					name:       "TCP-443",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&BackendSetAction{
 					name:       "TCP-445",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&BackendSetAction{
 					name:       "TCP-444",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&BackendSetAction{
 					name:       "TCP-442",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 			},
 			listenerActions: []Action{
 				&ListenerAction{
 					name:       "TCP-443",
 					actionType: Update,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&ListenerAction{
 					name:       "TCP-80",
 					actionType: Update,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&ListenerAction{
 					name:       "TCP-445",
 					actionType: Update,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&ListenerAction{
 					name:       "TCP-442",
 					actionType: Update,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&ListenerAction{
 					name:       "TCP-444",
 					actionType: Update,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 			},
 			expected: []Action{
 				&ListenerAction{
 					name:       "TCP-442",
 					actionType: Update,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&BackendSetAction{
 					name:       "TCP-442",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&ListenerAction{
 					name:       "TCP-443",
 					actionType: Update,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&BackendSetAction{
 					name:       "TCP-443",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&ListenerAction{
 					name:       "TCP-444",
 					actionType: Update,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&BackendSetAction{
 					name:       "TCP-444",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&ListenerAction{
 					name:       "TCP-445",
 					actionType: Update,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&BackendSetAction{
 					name:       "TCP-445",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&ListenerAction{
 					name:       "TCP-80",
 					actionType: Update,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&BackendSetAction{
 					name:       "TCP-80",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 			},
 		},
@@ -196,46 +196,157 @@ func TestSortAndCombineActions(t *testing.T) {
 				&BackendSetAction{
 					name:       "TCP-80",
 					actionType: Delete,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&BackendSetAction{
 					name:       "TCP-443",
 					actionType: Delete,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 			},
 			listenerActions: []Action{
 				&ListenerAction{
 					name:       "TCP-443-secret",
 					actionType: Delete,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&ListenerAction{
 					name:       "TCP-80",
 					actionType: Delete,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 			},
 			expected: []Action{
 				&ListenerAction{
 					name:       "TCP-443-secret",
 					actionType: Delete,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&BackendSetAction{
 					name:       "TCP-443",
 					actionType: Delete,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
 				},
 				&ListenerAction{
 					name:       "TCP-80",
 					actionType: Delete,
-					Listener:   loadbalancer.ListenerDetails{},
+					Listener:   client.GenericListener{},
 				},
 				&BackendSetAction{
 					name:       "TCP-80",
 					actionType: Delete,
-					BackendSet: loadbalancer.BackendSetDetails{},
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+			},
+		},
+		// Update port 8080 - lexicographic priority
+		// Change ports 80 - 443 - Creates create delete sequence for listener and backendset - lexicographically decreased port
+		// Change ports 6443 - 9443 - Creates create delete sequence for listener and backendset - lexicographically increased port
+		"create+delete+update": {
+			backendSetActions: []Action{
+				&BackendSetAction{
+					name:       "TCP-8080",
+					actionType: Update,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-9443",
+					actionType: Create,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-6443",
+					actionType: Delete,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-80",
+					actionType: Delete,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-443",
+					actionType: Create,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+			},
+			listenerActions: []Action{
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Delete,
+					Listener:   client.GenericListener{},
+				},
+				&ListenerAction{
+					name:       "TCP-9443",
+					actionType: Create,
+					Listener:   client.GenericListener{},
+				},
+				&ListenerAction{
+					name:       "TCP-443",
+					actionType: Create,
+					Listener:   client.GenericListener{},
+				},
+				&ListenerAction{
+					name:       "TCP-8080",
+					actionType: Update,
+					Listener:   client.GenericListener{},
+				},
+				&ListenerAction{
+					name:       "TCP-6443",
+					actionType: Delete,
+					Listener:   client.GenericListener{},
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-6443",
+					actionType: Delete,
+					Listener:   client.GenericListener{},
+				},
+				&BackendSetAction{
+					name:       "TCP-6443",
+					actionType: Delete,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Delete,
+					Listener:   client.GenericListener{},
+				},
+				&BackendSetAction{
+					name:       "TCP-80",
+					actionType: Delete,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-443",
+					actionType: Create,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&ListenerAction{
+					name:       "TCP-443",
+					actionType: Create,
+					Listener:   client.GenericListener{},
+				},
+				&ListenerAction{
+					name:       "TCP-8080",
+					actionType: Update,
+					Listener:   client.GenericListener{},
+				},
+				&BackendSetAction{
+					name:       "TCP-8080",
+					actionType: Update,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-9443",
+					actionType: Create,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&ListenerAction{
+					name:       "TCP-9443",
+					actionType: Create,
+					Listener:   client.GenericListener{},
 				},
 			},
 		},
@@ -254,29 +365,29 @@ func TestSortAndCombineActions(t *testing.T) {
 func TestGetBackendSetChanges(t *testing.T) {
 	var testCases = []struct {
 		name     string
-		desired  map[string]loadbalancer.BackendSetDetails
-		actual   map[string]loadbalancer.BackendSet
+		desired  map[string]client.GenericBackendSetDetails
+		actual   map[string]client.GenericBackendSetDetails
 		expected []Action
 	}{
 		{
 			name: "create backendset",
-			desired: map[string]loadbalancer.BackendSetDetails{
-				"one": loadbalancer.BackendSetDetails{
-					Backends: []loadbalancer.BackendDetails{
+			desired: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
-				"two": loadbalancer.BackendSetDetails{
-					Backends: []loadbalancer.BackendDetails{
+				"two": client.GenericBackendSetDetails{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.3"), Port: common.Int(80)},
 						{IpAddress: common.String("0.0.0.4"), Port: common.Int(80)},
 					},
 				},
 			},
-			actual: map[string]loadbalancer.BackendSet{
-				"one": loadbalancer.BackendSet{
+			actual: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
 					Name: common.String("one"),
-					Backends: []loadbalancer.Backend{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
@@ -285,8 +396,8 @@ func TestGetBackendSetChanges(t *testing.T) {
 				&BackendSetAction{
 					name:       "two",
 					actionType: Create,
-					BackendSet: loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{
+					BackendSet: client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{
 							{IpAddress: common.String("0.0.0.3"), Port: common.Int(80)},
 							{IpAddress: common.String("0.0.0.4"), Port: common.Int(80)},
 						},
@@ -299,18 +410,18 @@ func TestGetBackendSetChanges(t *testing.T) {
 		},
 		{
 			name: "update backendset - add backend",
-			desired: map[string]loadbalancer.BackendSetDetails{
-				"one": loadbalancer.BackendSetDetails{
-					Backends: []loadbalancer.BackendDetails{
+			desired: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 						{IpAddress: common.String("0.0.0.1"), Port: common.Int(80)},
 					},
 				},
 			},
-			actual: map[string]loadbalancer.BackendSet{
-				"one": loadbalancer.BackendSet{
+			actual: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
 					Name: common.String("one"),
-					Backends: []loadbalancer.Backend{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Name: common.String("0.0.0.0:80")},
 					},
 				},
@@ -319,8 +430,8 @@ func TestGetBackendSetChanges(t *testing.T) {
 				&BackendSetAction{
 					name:       "one",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{
+					BackendSet: client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{
 							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 							{IpAddress: common.String("0.0.0.1"), Port: common.Int(80)},
 						},
@@ -336,17 +447,17 @@ func TestGetBackendSetChanges(t *testing.T) {
 		},
 		{
 			name: "update backendset - remove backend",
-			desired: map[string]loadbalancer.BackendSetDetails{
-				"one": loadbalancer.BackendSetDetails{
-					Backends: []loadbalancer.BackendDetails{
+			desired: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
 			},
-			actual: map[string]loadbalancer.BackendSet{
-				"one": loadbalancer.BackendSet{
+			actual: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
 					Name: common.String("one"),
-					Backends: []loadbalancer.Backend{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Name: common.String("0.0.0.0:80")},
 						{IpAddress: common.String("0.0.0.1"), Port: common.Int(80), Name: common.String("0.0.0.1:80")},
 					},
@@ -356,8 +467,8 @@ func TestGetBackendSetChanges(t *testing.T) {
 				&BackendSetAction{
 					name:       "one",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{
+					BackendSet: client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{
 							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 						},
 					},
@@ -372,18 +483,18 @@ func TestGetBackendSetChanges(t *testing.T) {
 		},
 		{
 			name: "update backendset - update policy",
-			desired: map[string]loadbalancer.BackendSetDetails{
-				"one": loadbalancer.BackendSetDetails{
-					Backends: []loadbalancer.BackendDetails{
+			desired: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 					Policy: common.String("ROUND_ROBIN"),
 				},
 			},
-			actual: map[string]loadbalancer.BackendSet{
-				"one": loadbalancer.BackendSet{
+			actual: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
 					Name: common.String("one"),
-					Backends: []loadbalancer.Backend{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Name: common.String("0.0.0.0:80")},
 					},
 					Policy: common.String("IP HASH"),
@@ -393,8 +504,8 @@ func TestGetBackendSetChanges(t *testing.T) {
 				&BackendSetAction{
 					name:       "one",
 					actionType: Update,
-					BackendSet: loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{
+					BackendSet: client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{
 							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 						},
 						Policy: common.String("ROUND_ROBIN"),
@@ -411,11 +522,11 @@ func TestGetBackendSetChanges(t *testing.T) {
 
 		{
 			name:    "remove backendset",
-			desired: map[string]loadbalancer.BackendSetDetails{},
-			actual: map[string]loadbalancer.BackendSet{
-				"one": loadbalancer.BackendSet{
+			desired: map[string]client.GenericBackendSetDetails{},
+			actual: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
 					Name: common.String("one"),
-					Backends: []loadbalancer.Backend{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Name: common.String("0.0.0.0:80")},
 					},
 				},
@@ -424,8 +535,8 @@ func TestGetBackendSetChanges(t *testing.T) {
 				&BackendSetAction{
 					name:       "one",
 					actionType: Delete,
-					BackendSet: loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{
+					BackendSet: client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{
 							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 						},
 					},
@@ -437,17 +548,17 @@ func TestGetBackendSetChanges(t *testing.T) {
 		},
 		{
 			name: "no change",
-			desired: map[string]loadbalancer.BackendSetDetails{
-				"one": loadbalancer.BackendSetDetails{
-					Backends: []loadbalancer.BackendDetails{
+			desired: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
 			},
-			actual: map[string]loadbalancer.BackendSet{
-				"one": loadbalancer.BackendSet{
+			actual: map[string]client.GenericBackendSetDetails{
+				"one": client.GenericBackendSetDetails{
 					Name: common.String("one"),
-					Backends: []loadbalancer.Backend{
+					Backends: []client.GenericBackend{
 						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
@@ -472,23 +583,23 @@ func TestGetBackendSetChanges(t *testing.T) {
 func TestGetListenerChanges(t *testing.T) {
 	var testCases = []struct {
 		name     string
-		desired  map[string]loadbalancer.ListenerDetails
-		actual   map[string]loadbalancer.Listener
+		desired  map[string]client.GenericListener
+		actual   map[string]client.GenericListener
 		expected []Action
 	}{
 		{
 			name: "create listener",
-			desired: map[string]loadbalancer.ListenerDetails{"TCP-443": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{"TCP-443": client.GenericListener{
 				DefaultBackendSetName: common.String("TCP-443"),
 				Protocol:              common.String("TCP"),
 				Port:                  common.Int(443),
 			}},
-			actual: map[string]loadbalancer.Listener{},
+			actual: map[string]client.GenericListener{},
 			expected: []Action{
 				&ListenerAction{
 					name:       "TCP-443",
 					actionType: Create,
-					Listener: loadbalancer.ListenerDetails{
+					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-443"),
 						Protocol:              common.String("TCP"),
 						Port:                  common.Int(443),
@@ -498,20 +609,20 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "add listener",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"TCP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
 				},
-				"TCP-443": loadbalancer.ListenerDetails{
+				"TCP-443": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-443"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(443),
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"TCP-80": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
@@ -522,7 +633,7 @@ func TestGetListenerChanges(t *testing.T) {
 				&ListenerAction{
 					name:       "TCP-443",
 					actionType: Create,
-					Listener: loadbalancer.ListenerDetails{
+					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-443"),
 						Protocol:              common.String("TCP"),
 						Port:                  common.Int(443),
@@ -532,21 +643,21 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "remove listener",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"TCP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"TCP-443": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"TCP-443": client.GenericListener{
 					Name:                  common.String("TCP-443"),
 					DefaultBackendSetName: common.String("TCP-443"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(443),
 				},
-				"TCP-80": loadbalancer.Listener{
+				"TCP-80": client.GenericListener{
 					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
@@ -557,7 +668,7 @@ func TestGetListenerChanges(t *testing.T) {
 				&ListenerAction{
 					name:       "TCP-443",
 					actionType: Delete,
-					Listener: loadbalancer.ListenerDetails{
+					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-443"),
 						Protocol:              common.String("TCP"),
 						Port:                  common.Int(443),
@@ -567,21 +678,21 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "remove listener [legacy listeners]",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"TCP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"TCP-443-secret": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"TCP-443-secret": client.GenericListener{
 					Name:                  common.String("TCP-443-secret"),
 					DefaultBackendSetName: common.String("TCP-443"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(443),
 				},
-				"TCP-80": loadbalancer.Listener{
+				"TCP-80": client.GenericListener{
 					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
@@ -592,7 +703,7 @@ func TestGetListenerChanges(t *testing.T) {
 				&ListenerAction{
 					name:       "TCP-443-secret",
 					actionType: Delete,
-					Listener: loadbalancer.ListenerDetails{
+					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-443"),
 						Protocol:              common.String("TCP"),
 						Port:                  common.Int(443),
@@ -602,15 +713,15 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "no change",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"TCP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"TCP-80": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
@@ -621,15 +732,15 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "no change [legacy listeners]",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"TCP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"TCP-80-secret": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"TCP-80-secret": client.GenericListener{
 					Name:                  common.String("TCP-80-secret"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
@@ -640,23 +751,23 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "ssl config change",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"TCP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
-					SslConfiguration: &loadbalancer.SslConfigurationDetails{
+					SslConfiguration: &client.GenericSslConfigurationDetails{
 						CertificateName: common.String("desired"),
 					},
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"TCP-80": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
-					SslConfiguration: &loadbalancer.SslConfiguration{
+					SslConfiguration: &client.GenericSslConfigurationDetails{
 						CertificateName: common.String("actual"),
 					},
 				},
@@ -665,11 +776,11 @@ func TestGetListenerChanges(t *testing.T) {
 				&ListenerAction{
 					name:       "TCP-80",
 					actionType: Update,
-					Listener: loadbalancer.ListenerDetails{
+					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-80"),
 						Protocol:              common.String("TCP"),
 						Port:                  common.Int(80),
-						SslConfiguration: &loadbalancer.SslConfigurationDetails{
+						SslConfiguration: &client.GenericSslConfigurationDetails{
 							CertificateName: common.String("desired"),
 						},
 					},
@@ -678,23 +789,23 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "idle timeout change",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"TCP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
-					ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+					ConnectionConfiguration: &client.GenericConnectionConfiguration{
 						IdleTimeout: common.Int64(100),
 					},
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"TCP-80": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
-					ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+					ConnectionConfiguration: &client.GenericConnectionConfiguration{
 						IdleTimeout: common.Int64(200),
 					},
 				},
@@ -703,11 +814,11 @@ func TestGetListenerChanges(t *testing.T) {
 				&ListenerAction{
 					name:       "TCP-80",
 					actionType: Update,
-					Listener: loadbalancer.ListenerDetails{
+					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-80"),
 						Protocol:              common.String("TCP"),
 						Port:                  common.Int(80),
-						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+						ConnectionConfiguration: &client.GenericConnectionConfiguration{
 							IdleTimeout: common.Int64(100),
 						},
 					},
@@ -716,24 +827,24 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "proxy protocol version change",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"TCP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
-					ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+					ConnectionConfiguration: &client.GenericConnectionConfiguration{
 						IdleTimeout:                    common.Int64(100),
 						BackendTcpProxyProtocolVersion: common.Int(2),
 					},
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"TCP-80": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
-					ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+					ConnectionConfiguration: &client.GenericConnectionConfiguration{
 						IdleTimeout:                    common.Int64(100),
 						BackendTcpProxyProtocolVersion: nil,
 					},
@@ -743,11 +854,11 @@ func TestGetListenerChanges(t *testing.T) {
 				&ListenerAction{
 					name:       "TCP-80",
 					actionType: Update,
-					Listener: loadbalancer.ListenerDetails{
+					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-80"),
 						Protocol:              common.String("TCP"),
 						Port:                  common.Int(80),
-						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+						ConnectionConfiguration: &client.GenericConnectionConfiguration{
 							IdleTimeout:                    common.Int64(100),
 							BackendTcpProxyProtocolVersion: common.Int(2),
 						},
@@ -757,23 +868,23 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "ssl config change [legacy listeners]",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"TCP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
-					SslConfiguration: &loadbalancer.SslConfigurationDetails{
+					SslConfiguration: &client.GenericSslConfigurationDetails{
 						CertificateName: common.String("desired"),
 					},
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"TCP-80-secret": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"TCP-80-secret": client.GenericListener{
 					Name:                  common.String("TCP-80-secret"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
-					SslConfiguration: &loadbalancer.SslConfiguration{
+					SslConfiguration: &client.GenericSslConfigurationDetails{
 						CertificateName: common.String("arg"),
 					},
 				},
@@ -782,11 +893,11 @@ func TestGetListenerChanges(t *testing.T) {
 				&ListenerAction{
 					name:       "TCP-80-secret",
 					actionType: Update,
-					Listener: loadbalancer.ListenerDetails{
+					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-80"),
 						Protocol:              common.String("TCP"),
 						Port:                  common.Int(80),
-						SslConfiguration: &loadbalancer.SslConfigurationDetails{
+						SslConfiguration: &client.GenericSslConfigurationDetails{
 							CertificateName: common.String("desired"),
 						},
 					},
@@ -795,15 +906,15 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "protocol change TCP to HTTP",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"HTTP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"HTTP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("HTTP"),
 					Port:                  common.Int(80),
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"TCP-80": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
@@ -814,7 +925,7 @@ func TestGetListenerChanges(t *testing.T) {
 				&ListenerAction{
 					name:       "TCP-80",
 					actionType: Update,
-					Listener: loadbalancer.ListenerDetails{
+					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-80"),
 						Protocol:              common.String("HTTP"),
 						Port:                  common.Int(80),
@@ -824,15 +935,15 @@ func TestGetListenerChanges(t *testing.T) {
 		},
 		{
 			name: "protocol change HTTP to TCP",
-			desired: map[string]loadbalancer.ListenerDetails{
-				"TCP-80": loadbalancer.ListenerDetails{
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
 				},
 			},
-			actual: map[string]loadbalancer.Listener{
-				"HTTP-80": loadbalancer.Listener{
+			actual: map[string]client.GenericListener{
+				"HTTP-80": client.GenericListener{
 					Name:                  common.String("HTTP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("HTTP"),
@@ -843,7 +954,7 @@ func TestGetListenerChanges(t *testing.T) {
 				&ListenerAction{
 					name:       "HTTP-80",
 					actionType: Update,
-					Listener: loadbalancer.ListenerDetails{
+					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-80"),
 						Protocol:              common.String("TCP"),
 						Port:                  common.Int(80),
@@ -976,6 +1087,18 @@ func TestGetLoadBalancerName(t *testing.T) {
 			},
 			expected: "testprefix-fakeuid",
 		},
+		"no prefix NLB": {
+			prefix: "",
+			service: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "networkLoadbalancer",
+					Namespace:   "testNamespace",
+					Annotations: map[string]string{ServiceAnnotationLoadBalancerType: "nlb"},
+					UID:         "fakeuid",
+				},
+			},
+			expected: "testNamespace/networkLoadbalancer/fakeuid",
+		},
 	}
 
 	for name, tc := range testCases {
@@ -1058,18 +1181,18 @@ func TestGetListenerName(t *testing.T) {
 func TestHasListenerChanged(t *testing.T) {
 	var testCases = []struct {
 		name     string
-		desired  loadbalancer.ListenerDetails
-		actual   loadbalancer.Listener
+		desired  client.GenericListener
+		actual   client.GenericListener
 		expected bool
 	}{
 		{
 			name: "DefaultBackendSetName changes",
-			desired: loadbalancer.ListenerDetails{
+			desired: client.GenericListener{
 				DefaultBackendSetName: common.String("TCP-443"),
 				Protocol:              common.String("TCP"),
 				Port:                  common.Int(443),
 			},
-			actual: loadbalancer.Listener{
+			actual: client.GenericListener{
 				DefaultBackendSetName: common.String("TCP-4431"),
 				Protocol:              common.String("TCP"),
 				Port:                  common.Int(443)},
@@ -1077,36 +1200,36 @@ func TestHasListenerChanged(t *testing.T) {
 		},
 		{
 			name: "Port changes",
-			desired: loadbalancer.ListenerDetails{
+			desired: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
 			},
-			actual: loadbalancer.Listener{
+			actual: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(442)},
 			expected: true,
 		},
 		{
 			name: "Protocol changes",
-			desired: loadbalancer.ListenerDetails{
+			desired: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
 			},
-			actual: loadbalancer.Listener{
+			actual: client.GenericListener{
 				Protocol: common.String("HTTP"),
 				Port:     common.Int(443)},
 			expected: true,
 		},
 		{
 			name: "SSLConfigurationChanges present in actual but not in desired",
-			desired: loadbalancer.ListenerDetails{
+			desired: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
 			},
-			actual: loadbalancer.Listener{
+			actual: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
-				SslConfiguration: &loadbalancer.SslConfiguration{
+				SslConfiguration: &client.GenericSslConfigurationDetails{
 					VerifyDepth:           common.Int(1),
 					VerifyPeerCertificate: common.Bool(true),
 					CertificateName:       common.String("actual"),
@@ -1117,14 +1240,14 @@ func TestHasListenerChanged(t *testing.T) {
 		},
 		{
 			name: "SSLConfigurationChanges present in desired but not in actual",
-			desired: loadbalancer.ListenerDetails{
+			desired: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
-				SslConfiguration: &loadbalancer.SslConfigurationDetails{
+				SslConfiguration: &client.GenericSslConfigurationDetails{
 					CertificateName: common.String("desired"),
 				},
 			},
-			actual: loadbalancer.Listener{
+			actual: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
 			},
@@ -1133,19 +1256,19 @@ func TestHasListenerChanged(t *testing.T) {
 		},
 		{
 			name: "SSLConfigurationChanges CertificateName changes",
-			desired: loadbalancer.ListenerDetails{
+			desired: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
-				SslConfiguration: &loadbalancer.SslConfigurationDetails{
+				SslConfiguration: &client.GenericSslConfigurationDetails{
 					CertificateName:       common.String("desired"),
 					VerifyDepth:           common.Int(1),
 					VerifyPeerCertificate: common.Bool(true),
 				},
 			},
-			actual: loadbalancer.Listener{
+			actual: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
-				SslConfiguration: &loadbalancer.SslConfiguration{
+				SslConfiguration: &client.GenericSslConfigurationDetails{
 					VerifyDepth:           common.Int(1),
 					VerifyPeerCertificate: common.Bool(true),
 					CertificateName:       common.String("actual"),
@@ -1156,14 +1279,14 @@ func TestHasListenerChanged(t *testing.T) {
 		},
 		{
 			name: "ConnectionConfiguration present in actual but not in desired",
-			desired: loadbalancer.ListenerDetails{
+			desired: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
 			},
-			actual: loadbalancer.Listener{
+			actual: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
-				ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+				ConnectionConfiguration: &client.GenericConnectionConfiguration{
 					IdleTimeout: common.Int64(300),
 				},
 			},
@@ -1172,14 +1295,14 @@ func TestHasListenerChanged(t *testing.T) {
 		},
 		{
 			name: "ConnectionConfiguration present in desired but not in actual",
-			desired: loadbalancer.ListenerDetails{
+			desired: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
-				ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+				ConnectionConfiguration: &client.GenericConnectionConfiguration{
 					IdleTimeout: common.Int64(300),
 				},
 			},
-			actual: loadbalancer.Listener{
+			actual: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
 			},
@@ -1188,17 +1311,17 @@ func TestHasListenerChanged(t *testing.T) {
 		},
 		{
 			name: "ConnectionConfiguration IdleTimeout changed",
-			desired: loadbalancer.ListenerDetails{
+			desired: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
-				ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+				ConnectionConfiguration: &client.GenericConnectionConfiguration{
 					IdleTimeout: common.Int64(300),
 				},
 			},
-			actual: loadbalancer.Listener{
+			actual: client.GenericListener{
 				Protocol: common.String("TCP"),
 				Port:     common.Int(443),
-				ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+				ConnectionConfiguration: &client.GenericConnectionConfiguration{
 					IdleTimeout: common.Int64(400),
 				},
 			},
@@ -1207,28 +1330,28 @@ func TestHasListenerChanged(t *testing.T) {
 		},
 		{
 			name: "no changes",
-			desired: loadbalancer.ListenerDetails{
+			desired: client.GenericListener{
 				DefaultBackendSetName: common.String("TCP-443"),
 				Protocol:              common.String("TCP"),
 				Port:                  common.Int(443),
-				SslConfiguration: &loadbalancer.SslConfigurationDetails{
+				SslConfiguration: &client.GenericSslConfigurationDetails{
 					CertificateName: common.String("cert"),
 					VerifyDepth:     common.Int(1),
 				},
-				ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+				ConnectionConfiguration: &client.GenericConnectionConfiguration{
 					IdleTimeout:                    common.Int64(300),
 					BackendTcpProxyProtocolVersion: common.Int(1),
 				},
 			},
-			actual: loadbalancer.Listener{
+			actual: client.GenericListener{
 				DefaultBackendSetName: common.String("TCP-443"),
 				Protocol:              common.String("TCP"),
 				Port:                  common.Int(443),
-				SslConfiguration: &loadbalancer.SslConfiguration{
+				SslConfiguration: &client.GenericSslConfigurationDetails{
 					CertificateName: common.String("cert"),
 					VerifyDepth:     common.Int(1),
 				},
-				ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+				ConnectionConfiguration: &client.GenericConnectionConfiguration{
 					IdleTimeout:                    common.Int64(300),
 					BackendTcpProxyProtocolVersion: common.Int(1),
 				},
@@ -1256,28 +1379,28 @@ var (
 func TestHasBackendSetChanged(t *testing.T) {
 	var testCases = []struct {
 		name     string
-		desired  loadbalancer.BackendSetDetails
-		actual   loadbalancer.BackendSet
+		desired  client.GenericBackendSetDetails
+		actual   client.GenericBackendSetDetails
 		expected bool
 	}{
 		{
 			name: "Policy changes",
-			desired: loadbalancer.BackendSetDetails{
+			desired: client.GenericBackendSetDetails{
 				Policy: common.String("desired"),
 			},
-			actual: loadbalancer.BackendSet{
+			actual: client.GenericBackendSetDetails{
 				Policy: common.String("actual"),
 			},
 			expected: true,
 		},
 		{
 			name: "HealthChecker present in actual but not in desired",
-			desired: loadbalancer.BackendSetDetails{
+			desired: client.GenericBackendSetDetails{
 				Policy: common.String("policy"),
 			},
-			actual: loadbalancer.BackendSet{
+			actual: client.GenericBackendSetDetails{
 				Policy: common.String("policy"),
-				HealthChecker: &loadbalancer.HealthChecker{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
@@ -1285,26 +1408,26 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker present in desired but not in actual",
-			desired: loadbalancer.BackendSetDetails{
+			desired: client.GenericBackendSetDetails{
 				Policy: common.String("policy"),
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
-			actual: loadbalancer.BackendSet{
+			actual: client.GenericBackendSetDetails{
 				Policy: common.String("policy"),
 			},
 			expected: true,
 		},
 		{
 			name: "HealthChecker port different",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(30),
 				},
 			},
@@ -1312,14 +1435,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker port is present in actual but not present in desired",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					ResponseBodyRegex: common.String("regex"),
 					Port:              common.Int(30),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					ResponseBodyRegex: common.String("regex"),
 				},
 			},
@@ -1327,13 +1450,13 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker ResponseBodyRegex present in actual but not present in desired",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:              common.Int(20),
 					ResponseBodyRegex: common.String("actual"),
 				},
@@ -1342,14 +1465,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker ResponseBodyRegex present in desired but not present in actual",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:              common.Int(20),
 					ResponseBodyRegex: common.String("desired"),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
@@ -1357,14 +1480,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker ResponseBodyRegex changes",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:              common.Int(20),
 					ResponseBodyRegex: common.String("desired"),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:              common.Int(20),
 					ResponseBodyRegex: common.String("actual"),
 				},
@@ -1373,14 +1496,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker Retries changes",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:    common.Int(20),
 					Retries: common.Int(1),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:    common.Int(20),
 					Retries: common.Int(2),
 				},
@@ -1389,14 +1512,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker ReturnCode changes",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:       common.Int(20),
 					ReturnCode: common.Int(1),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:       common.Int(20),
 					ReturnCode: common.Int(2),
 				},
@@ -1405,14 +1528,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker TimeoutInMillis changes",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:            common.Int(20),
 					TimeoutInMillis: common.Int(1),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:            common.Int(20),
 					TimeoutInMillis: common.Int(2),
 				},
@@ -1421,14 +1544,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker retries changes",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:    common.Int(20),
 					Retries: common.Int(2),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:    common.Int(20),
 					Retries: common.Int(3),
 				},
@@ -1437,14 +1560,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker IntervalInMillis changes",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:             common.Int(20),
 					IntervalInMillis: common.Int(1000),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:             common.Int(20),
 					IntervalInMillis: common.Int(300),
 				},
@@ -1453,14 +1576,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker TimeoutInMillis present in desired and not in actual",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:            common.Int(20),
 					TimeoutInMillis: common.Int(1),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
@@ -1468,14 +1591,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker retries present in desired and not in actual",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:    common.Int(20),
 					Retries: common.Int(2),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
@@ -1483,14 +1606,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker IntervalInMillis present in desired and not in actual",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:             common.Int(20),
 					IntervalInMillis: common.Int(1000),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
@@ -1498,13 +1621,13 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker TimeoutInMillis present in actual and not in desired",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:            common.Int(20),
 					TimeoutInMillis: common.Int(1),
 				},
@@ -1513,13 +1636,13 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker retries present in actual and not in desired",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:    common.Int(20),
 					Retries: common.Int(2),
 				},
@@ -1528,13 +1651,13 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker IntervalInMillis present in actual and not in desired",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port: common.Int(20),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:             common.Int(20),
 					IntervalInMillis: common.Int(1000),
 				},
@@ -1543,14 +1666,14 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker UrlPath changes",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:    common.Int(20),
 					UrlPath: common.String("/desired"),
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:    common.Int(20),
 					UrlPath: common.String("/actual"),
 				},
@@ -1559,35 +1682,35 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "HealthChecker Protocol changes",
-			desired: loadbalancer.BackendSetDetails{
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+			desired: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:     common.Int(20),
-					Protocol: common.String("desired"),
+					Protocol: "desired",
 				},
 			},
-			actual: loadbalancer.BackendSet{
-				HealthChecker: &loadbalancer.HealthChecker{
+			actual: client.GenericBackendSetDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:     common.Int(20),
-					Protocol: common.String("actual"),
+					Protocol: "actual",
 				},
 			},
 			expected: true,
 		},
 		{
 			name: "no changes",
-			desired: loadbalancer.BackendSetDetails{
+			desired: client.GenericBackendSetDetails{
 				Policy: common.String("policy"),
-				HealthChecker: &loadbalancer.HealthCheckerDetails{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:     common.Int(20),
-					Protocol: common.String("Protocol"),
+					Protocol: "Protocol",
 					Retries:  common.Int(2),
 				},
 			},
-			actual: loadbalancer.BackendSet{
+			actual: client.GenericBackendSetDetails{
 				Policy: common.String("policy"),
-				HealthChecker: &loadbalancer.HealthChecker{
+				HealthChecker: &client.GenericHealthChecker{
 					Port:     common.Int(20),
-					Protocol: common.String("Protocol"),
+					Protocol: "Protocol",
 					Retries:  common.Int(2),
 				},
 			},
@@ -1595,18 +1718,18 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "no change - nodeport",
-			desired: loadbalancer.BackendSetDetails{
+			desired: client.GenericBackendSetDetails{
 				Policy: common.String("policy"),
-				Backends: []loadbalancer.BackendDetails{
+				Backends: []client.GenericBackend{
 					{
 						IpAddress: common.String("0.0.0.0"),
 						Port:      &testBackendPort,
 					},
 				},
 			},
-			actual: loadbalancer.BackendSet{
+			actual: client.GenericBackendSetDetails{
 				Policy: common.String("policy"),
-				Backends: []loadbalancer.Backend{
+				Backends: []client.GenericBackend{
 					{
 						IpAddress: common.String("0.0.0.0"),
 						Port:      &testBackendPort,
@@ -1617,18 +1740,18 @@ func TestHasBackendSetChanged(t *testing.T) {
 		},
 		{
 			name: "nodeport change",
-			desired: loadbalancer.BackendSetDetails{
+			desired: client.GenericBackendSetDetails{
 				Policy: common.String("policy"),
-				Backends: []loadbalancer.BackendDetails{
+				Backends: []client.GenericBackend{
 					{
 						IpAddress: common.String("0.0.0.0"),
 						Port:      &testBackendPort,
 					},
 				},
 			},
-			actual: loadbalancer.BackendSet{
+			actual: client.GenericBackendSetDetails{
 				Policy: common.String("policy"),
-				Backends: []loadbalancer.Backend{
+				Backends: []client.GenericBackend{
 					{
 						IpAddress: common.String("0.0.0.0"),
 						Port:      &testNewBackendPort,
@@ -1636,6 +1759,78 @@ func TestHasBackendSetChanged(t *testing.T) {
 				},
 			},
 			expected: true,
+		},
+		{
+			name: "Set IsPreserveSource",
+			desired: client.GenericBackendSetDetails{
+				IsPreserveSource: nil,
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			actual: client.GenericBackendSetDetails{
+				IsPreserveSource: common.Bool(true),
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "IsPreserveSource change",
+			desired: client.GenericBackendSetDetails{
+				IsPreserveSource: common.Bool(true),
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			actual: client.GenericBackendSetDetails{
+				IsPreserveSource: common.Bool(false),
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "no change - IsPreserveSource set",
+			desired: client.GenericBackendSetDetails{
+				IsPreserveSource: common.Bool(true),
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			actual: client.GenericBackendSetDetails{
+				IsPreserveSource: common.Bool(true),
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			expected: false,
 		},
 	}
 
@@ -1653,28 +1848,30 @@ func TestHasBackendSetChanged(t *testing.T) {
 func TestGetHealthCheckerChanges(t *testing.T) {
 	var testCases = []struct {
 		name     string
-		desired  loadbalancer.HealthCheckerDetails
-		actual   loadbalancer.HealthChecker
+		desired  client.GenericHealthChecker
+		actual   client.GenericHealthChecker
 		expected []string
 	}{
 		{
 			name: "All Changed",
-			desired: loadbalancer.HealthCheckerDetails{
+			desired: client.GenericHealthChecker{
 				Port:              common.Int(20),
 				ResponseBodyRegex: common.String("desired"),
 				Retries:           common.Int(3),
 				ReturnCode:        common.Int(200),
-				TimeoutInMillis:   common.Int(200),
+				TimeoutInMillis:   common.Int(300),
 				UrlPath:           common.String("/desired"),
-				Protocol:          common.String("HTTP"),
+				Protocol:          "HTTP",
+				IsForcePlainText:  common.Bool(false),
 			},
-			actual: loadbalancer.HealthChecker{
+			actual: client.GenericHealthChecker{
 				Port:              common.Int(25),
 				ResponseBodyRegex: common.String("actual"),
 				Retries:           common.Int(2),
-				TimeoutInMillis:   common.Int(300),
+				TimeoutInMillis:   common.Int(200),
 				UrlPath:           common.String("/actual"),
-				Protocol:          common.String("TCP"),
+				Protocol:          "TCP",
+				IsForcePlainText:  common.Bool(true),
 			},
 			expected: []string{
 				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Port", 25, 20),
@@ -1682,8 +1879,9 @@ func TestGetHealthCheckerChanges(t *testing.T) {
 				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Retries", 2, 3),
 				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:ReturnCode", 0, 200),
 				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:TimeoutInMillis", 200, 300),
-				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:UrlPath", "actual", "desired"),
-				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:UrlPath", "TCP", "HTTP"),
+				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:UrlPath", "/actual", "/desired"),
+				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Protocol", "TCP", "HTTP"),
+				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:IsForcePlainText", true, false),
 			},
 		},
 	}
@@ -1691,9 +1889,6 @@ func TestGetHealthCheckerChanges(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			changes := getHealthCheckerChanges(&tt.actual, &tt.desired)
-			if len(changes) == len(tt.expected) {
-				return
-			}
 			if !reflect.DeepEqual(changes, tt.expected) {
 				t.Errorf("expected HealthCheckerChanges\n%+v\nbut got\n%+v", tt.expected, changes)
 			}
@@ -1704,18 +1899,18 @@ func TestGetHealthCheckerChanges(t *testing.T) {
 func TestGetSSLConfigurationChanges(t *testing.T) {
 	var testCases = []struct {
 		name     string
-		desired  loadbalancer.SslConfigurationDetails
-		actual   loadbalancer.SslConfiguration
+		desired  client.GenericSslConfigurationDetails
+		actual   client.GenericSslConfigurationDetails
 		expected []string
 	}{
 		{
 			name: "All Changed",
-			desired: loadbalancer.SslConfigurationDetails{
+			desired: client.GenericSslConfigurationDetails{
 				CertificateName:       common.String("desired"),
 				VerifyDepth:           common.Int(1),
 				VerifyPeerCertificate: common.Bool(true),
 			},
-			actual: loadbalancer.SslConfiguration{
+			actual: client.GenericSslConfigurationDetails{
 				CertificateName:       common.String("actual"),
 				VerifyPeerCertificate: common.Bool(false),
 			},
@@ -1743,17 +1938,17 @@ func TestGetSSLConfigurationChanges(t *testing.T) {
 func TestGetConnectionConfigurationChanges(t *testing.T) {
 	var testCases = []struct {
 		name     string
-		desired  loadbalancer.ConnectionConfiguration
-		actual   loadbalancer.ConnectionConfiguration
+		desired  client.GenericConnectionConfiguration
+		actual   client.GenericConnectionConfiguration
 		expected []string
 	}{
 		{
 			name: "All Changed",
-			desired: loadbalancer.ConnectionConfiguration{
+			desired: client.GenericConnectionConfiguration{
 				IdleTimeout:                    common.Int64(300),
 				BackendTcpProxyProtocolVersion: common.Int(2),
 			},
-			actual: loadbalancer.ConnectionConfiguration{
+			actual: client.GenericConnectionConfiguration{
 				IdleTimeout:                    common.Int64(400),
 				BackendTcpProxyProtocolVersion: common.Int(3),
 			},
@@ -1788,13 +1983,13 @@ var (
 func TestHasLoadbalancerShapeChanged(t *testing.T) {
 	var testCases = []struct {
 		name     string
-		lb       loadbalancer.LoadBalancer
+		lb       client.GenericLoadBalancer
 		lbSpec   LBSpec
 		expected bool
 	}{
 		{
 			name: "No Changes",
-			lb: loadbalancer.LoadBalancer{
+			lb: client.GenericLoadBalancer{
 				ShapeName: &hundredMbps,
 			},
 			lbSpec: LBSpec{
@@ -1804,9 +1999,9 @@ func TestHasLoadbalancerShapeChanged(t *testing.T) {
 		},
 		{
 			name: "No Changes flex",
-			lb: loadbalancer.LoadBalancer{
+			lb: client.GenericLoadBalancer{
 				ShapeName: &flexibleShape,
-				ShapeDetails: &loadbalancer.ShapeDetails{
+				ShapeDetails: &client.GenericShapeDetails{
 					MinimumBandwidthInMbps: &flexShape10,
 					MaximumBandwidthInMbps: &flexShape100,
 				},
@@ -1820,7 +2015,7 @@ func TestHasLoadbalancerShapeChanged(t *testing.T) {
 		},
 		{
 			name: "Change fixed shape",
-			lb: loadbalancer.LoadBalancer{
+			lb: client.GenericLoadBalancer{
 				ShapeName: &hundredMbps,
 			},
 			lbSpec: LBSpec{
@@ -1830,9 +2025,9 @@ func TestHasLoadbalancerShapeChanged(t *testing.T) {
 		},
 		{
 			name: "Change flex shape",
-			lb: loadbalancer.LoadBalancer{
+			lb: client.GenericLoadBalancer{
 				ShapeName: &flexibleShape,
-				ShapeDetails: &loadbalancer.ShapeDetails{
+				ShapeDetails: &client.GenericShapeDetails{
 					MinimumBandwidthInMbps: &flexShape10,
 					MaximumBandwidthInMbps: &flexShape100,
 				},
@@ -1882,6 +2077,102 @@ func TestHasLoadBalancerNetworkSecurityGroupsChanged(t *testing.T) {
 			changed := hasLoadBalancerNetworkSecurityGroupsChanged(context.TODO(), tt.actualNetworkSecurityGroup, tt.desiredNetworkSecurityGroup)
 			if changed != tt.expected {
 				t.Errorf("expected hasLoadBalancerNetworkSecurityGroupsChanged to be %+v\nbut got\n%+v", tt.expected, changed)
+			}
+		})
+	}
+}
+
+func Test_parseFlexibleShapeBandwidth(t *testing.T) {
+	var testCases = []struct {
+		name                string
+		annotation          string
+		inputShape          string
+		expectedOutputShape int
+		errMessage          string
+		wantErr             bool
+	}{
+		{
+			name:                "Valid Flexible Shape Min - Only integer",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMin,
+			inputShape:          "100",
+			expectedOutputShape: 100,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid Flexible Shape Max - Only integer",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMax,
+			inputShape:          "8000",
+			expectedOutputShape: 8000,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid Flexible Shape Min - With Unit (Uppercase M)",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMin,
+			inputShape:          "100Mbps",
+			expectedOutputShape: 100,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid Flexible Shape Max - With Unit (Uppercase M)",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMax,
+			inputShape:          "8000Mbps",
+			expectedOutputShape: 8000,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid Flexible Shape Min - With Unit (Lowercase m)",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMin,
+			inputShape:          "100mbps",
+			expectedOutputShape: 100,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid Flexible Shape Max - With Unit (Lowercase m)",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMax,
+			inputShape:          "8000mbps",
+			expectedOutputShape: 8000,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Invalid Flexible Shape Min",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMin,
+			inputShape:          "100kbps",
+			expectedOutputShape: 0,
+			errMessage:          "invalid format for service.beta.kubernetes.io/oci-load-balancer-shape-flex-min annotation : 100kbps",
+			wantErr:             true,
+		},
+		{
+			name:                "Invalid Flexible Shape Max",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMax,
+			inputShape:          "8000kbps",
+			expectedOutputShape: 0,
+			errMessage:          "invalid format for service.beta.kubernetes.io/oci-load-balancer-shape-flex-max annotation : 8000kbps",
+			wantErr:             true,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			parsedShape, err := parseFlexibleShapeBandwidth(tt.inputShape, tt.annotation)
+			if err != nil {
+				if !tt.wantErr {
+					t.Errorf("parseFlexibleShapeBandwidth() error = %v, wantErr = %v", err, tt.wantErr)
+				}
+				if !reflect.DeepEqual(err.Error(), tt.errMessage) {
+					t.Errorf("parseFlexibleShapeBandwidth() got errMessage = %v, want errMessage = %v", err.Error(), tt.errMessage)
+				}
+			}
+			if err == nil && tt.wantErr {
+				t.Errorf("parseFlexibleShapeBandwidth() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+			if err == nil && parsedShape != tt.expectedOutputShape {
+				t.Errorf("parseFlexibleShapeBandwidth() got = %v, want = %v", parsedShape, tt.expectedOutputShape)
 			}
 		})
 	}
