@@ -42,7 +42,7 @@ require (
 	github.com/go-logr/zapr v1.2.4 // indirect
 	github.com/golang/protobuf v1.5.3
 	github.com/kubernetes-csi/csi-lib-utils v0.14.0
-	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.2.0
+	github.com/kubernetes-csi/external-snapshotter/client/v7 v7.0.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.10
 	github.com/oracle/oci-go-sdk/v65 v65.56.0
@@ -57,21 +57,21 @@ require (
 	google.golang.org/grpc v1.61.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.28.4
-	k8s.io/apimachinery v0.28.4
+	k8s.io/api v0.29.0
+	k8s.io/apimachinery v0.29.0
 	k8s.io/apiserver v0.28.4 // indirect
-	k8s.io/client-go v0.28.4
+	k8s.io/client-go v0.29.0
 	k8s.io/cloud-provider v0.28.4
 	k8s.io/component-base v0.28.4
 	k8s.io/component-helpers v0.28.4
 	k8s.io/controller-manager v0.28.4 // indirect
 	k8s.io/csi-translation-lib v0.28.4 // indirect
 	k8s.io/klog v1.0.0
-	k8s.io/klog/v2 v2.100.1
+	k8s.io/klog/v2 v2.110.1
 	k8s.io/kubelet v0.28.4 // indirect
-	k8s.io/kubernetes v1.28.6
+	k8s.io/kubernetes v1.28.4
 	k8s.io/mount-utils v0.28.4
-	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
+	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	sigs.k8s.io/sig-storage-lib-external-provisioner/v9 v9.1.0-rc.0
 )
 
@@ -174,11 +174,11 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/kms v0.28.4 // indirect
-	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9 // indirect
+	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
 	k8s.io/kube-scheduler v0.0.0 // indirect
 	k8s.io/kubectl v0.28.4 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.4 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.3.0 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )

@@ -20,7 +20,7 @@ import (
 	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 	"time"
 
-	snapshot "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	snapshot "github.com/kubernetes-csi/external-snapshotter/client/v7/apis/volumesnapshot/v1"
 	. "github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

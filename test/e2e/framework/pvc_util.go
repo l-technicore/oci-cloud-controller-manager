@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v6/clientset/versioned"
+	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v7/clientset/versioned"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"

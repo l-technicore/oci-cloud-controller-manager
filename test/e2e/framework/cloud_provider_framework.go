@@ -23,7 +23,7 @@ import (
 
 	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 
-	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v6/clientset/versioned"
+	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v7/clientset/versioned"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci" // register oci cloud provider
