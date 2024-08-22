@@ -100,7 +100,7 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 
 	rateLimiter := client.NewRateLimiter(logger.Sugar(), config.RateLimiter)
 
-	c, err := client.New(logger.Sugar(), cp, &rateLimiter)
+	c, err := client.New(logger.Sugar(), cp, &rateLimiter, config.Auth.TenancyID)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +165,7 @@ func init() {
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider.
 func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
 	var err error
+	var sbcStopChannel = make(chan struct{})
 	cp.kubeclient, err = clientBuilder.Client("cloud-controller-manager")
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("failed to create kubeclient: %v", err))
@@ -189,15 +190,33 @@ func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClient
 	serviceAccountInformer := factory.Core().V1().ServiceAccounts()
 	go serviceAccountInformer.Informer().Run(wait.NeverStop)
 
+	pvInformer := factory.Core().V1().PersistentVolumes()
+	go pvInformer.Informer().Run(sbcStopChannel)
+
 	go nodeInfoController.Run(wait.NeverStop)
 
 	cp.logger.Info("Waiting for node informer cache to sync")
-	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced, serviceInformer.Informer().HasSynced) {
+	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced, serviceInformer.Informer().HasSynced, pvInformer.Informer().HasSynced) {
 		utilruntime.HandleError(fmt.Errorf("Timed out waiting for informers to sync"))
 	}
 	cp.NodeLister = nodeInformer.Lister()
 
 	cp.ServiceAccountLister = serviceAccountInformer.Lister()
+
+	enableStorageBackfillController := GetIsFeatureEnabledFromEnv(cp.logger, resourceTrackingFeatureFlagName, false)
+	if enableStorageBackfillController {
+		cp.logger.Info("Starting storage backfill controller")
+
+		storageBackfillController := NewStorageBackfillController(
+			cp.kubeclient,
+			cp.client,
+			cp.logger,
+			cp.metricPusher,
+			cp.config,
+			pvInformer.Lister(),
+		)
+		go storageBackfillController.Run(sbcStopChannel)
+	}
 
 	cp.securityListManagerFactory = func(mode string) securityListManager {
 		if cp.config.LoadBalancer.Disabled {
