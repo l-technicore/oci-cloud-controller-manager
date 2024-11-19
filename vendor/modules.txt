@@ -280,7 +280,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.19
 github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/pkg/pwalkdir
-# github.com/oracle/oci-go-sdk/v65 v65.77.0
+# github.com/oracle/oci-go-sdk/v65 v65.78.1
 ## explicit; go 1.13
 github.com/oracle/oci-go-sdk/v65/common
 github.com/oracle/oci-go-sdk/v65/common/auth
@@ -1520,8 +1520,6 @@ k8s.io/kubernetes/pkg/volume/util/recyclerclient
 k8s.io/kubernetes/pkg/volume/util/subpath
 k8s.io/kubernetes/pkg/volume/util/types
 k8s.io/kubernetes/test/e2e/framework/testfiles
-k8s.io/kubernetes/test/e2e/storage/drivers/csi-test/mock/cache
-k8s.io/kubernetes/test/e2e/storage/drivers/csi-test/mock/service
 k8s.io/kubernetes/test/e2e/testing-manifests
 k8s.io/kubernetes/test/utils
 k8s.io/kubernetes/test/utils/image
