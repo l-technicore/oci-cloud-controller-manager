@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -232,12 +233,18 @@ func setupBaseClient(log *zap.SugaredLogger, client *common.BaseClient, signer c
 // New constructs an OCI API client.
 func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimiter *RateLimiter, targetTenancyID string) (Interface, error) {
 
+	signer := common.RequestSigner(cp, append(common.DefaultGenericHeaders(), "x-cross-tenancy-request"), common.DefaultBodyHeaders())
+	interceptor := func(r *http.Request) error {
+		r.Header.Set("x-cross-tenancy-request", targetTenancyID)
+		return nil
+	}
+
 	compute, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewComputeClientWithConfigurationProvider")
 	}
 
-	setupBaseClient(logger, &compute.BaseClient, nil, nil, "")
+	setupBaseClient(logger, &compute.BaseClient, signer, interceptor, "")
 
 	err = configureCustomTransport(logger, &compute.BaseClient)
 	if err != nil {
@@ -249,7 +256,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "NewVirtualNetworkClientWithConfigurationProvider")
 	}
 
-	setupBaseClient(logger, &network.BaseClient, nil, nil, "")
+	setupBaseClient(logger, &network.BaseClient, signer, interceptor, "")
 
 	err = configureCustomTransport(logger, &network.BaseClient)
 	if err != nil {
@@ -261,7 +268,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "NewLoadBalancerClientWithConfigurationProvider")
 	}
 
-	setupBaseClient(logger, &lb.BaseClient, nil, nil, "")
+	setupBaseClient(logger, &lb.BaseClient, signer, interceptor, "")
 
 	err = configureCustomTransport(logger, &lb.BaseClient)
 	if err != nil {
@@ -273,7 +280,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "NewNetworkLoadBalancerClientWithConfigurationProvider")
 	}
 
-	setupBaseClient(logger, &nlb.BaseClient, nil, nil, "")
+	setupBaseClient(logger, &nlb.BaseClient, signer, interceptor, "")
 
 	err = configureCustomTransport(logger, &nlb.BaseClient)
 	if err != nil {
@@ -285,7 +292,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "NewIdentityClientWithConfigurationProvider")
 	}
 
-	setupBaseClient(logger, &identity.BaseClient, nil, nil, "")
+	setupBaseClient(logger, &identity.BaseClient, signer, interceptor, "")
 
 	err = configureCustomTransport(logger, &identity.BaseClient)
 	if err != nil {
@@ -298,7 +305,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 	//	return nil, errors.Wrap(err, "NewCompartmentsClientWithConfigurationProvider")
 	//}
 	//
-	//setupBaseClient(logger, &compartment.BaseClient, nil, nil, "")
+	//setupBaseClient(logger, &compartment.BaseClient, signer, interceptor, "")
 	//
 	//err = configureCustomTransport(logger, &compartment.BaseClient)
 	//if err != nil {
@@ -310,7 +317,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "NewBlockstorageClientWithConfigurationProvider")
 	}
 
-	setupBaseClient(logger, &bs.BaseClient, nil, nil, "")
+	setupBaseClient(logger, &bs.BaseClient, signer, interceptor, "")
 
 	err = configureCustomTransport(logger, &bs.BaseClient)
 	if err != nil {
@@ -322,7 +329,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "NewFileStorageClientWithConfigurationProvider")
 	}
 
-	setupBaseClient(logger, &fss.BaseClient, nil, nil, "")
+	setupBaseClient(logger, &fss.BaseClient, signer, interceptor, "")
 
 	err = configureCustomTransport(logger, &fss.BaseClient)
 	if err != nil {
@@ -388,13 +395,19 @@ func (c *client) LoadBalancer(logger *zap.SugaredLogger, lbType string, targetTe
 		return nil
 	}
 
+	signer := common.RequestSigner(configProvider, append(common.DefaultGenericHeaders(), "x-cross-tenancy-request"), common.DefaultBodyHeaders())
+	interceptor := func(r *http.Request) error {
+		r.Header.Set("x-cross-tenancy-request", targetTenancyID)
+		return nil
+	}
+
 	if lbType == "lb" {
 		lb, err := loadbalancer.NewLoadBalancerClientWithConfigurationProvider(configProvider)
 		if err != nil {
 			logger.Error("Failed to get new LB client with oke workload identity configuration provider! Error:" + err.Error())
 			return nil
 		}
-		setupBaseClient(logger, &lb.BaseClient, nil, nil, "")
+		setupBaseClient(logger, &lb.BaseClient, signer, interceptor, "")
 
 		err = configureCustomTransport(logger, &lb.BaseClient)
 		if err != nil {
@@ -414,7 +427,7 @@ func (c *client) LoadBalancer(logger *zap.SugaredLogger, lbType string, targetTe
 			logger.Error("Failed to get new NLB client with oke workload identity configuration provider! Error:" + err.Error())
 			return nil
 		}
-		setupBaseClient(logger, &nlb.BaseClient, nil, nil, "")
+		setupBaseClient(logger, &nlb.BaseClient, signer, interceptor, "")
 
 		err = configureCustomTransport(logger, &nlb.BaseClient)
 		if err != nil {
@@ -444,8 +457,12 @@ func (c *client) Networking(ociClientConfig *OCIClientConfig) NetworkingInterfac
 			c.logger.Errorf("Failed to create Network workload identity client %v", err)
 			return nil
 		}
-
-		setupBaseClient(c.logger, &network.BaseClient, nil, nil, "")
+		signer := common.RequestSigner(configProvider, append(common.DefaultGenericHeaders(), "x-cross-tenancy-request"), common.DefaultBodyHeaders())
+		interceptor := func(r *http.Request) error {
+			r.Header.Set("x-cross-tenancy-request", ociClientConfig.TenancyId)
+			return nil
+		}
+		setupBaseClient(c.logger, &network.BaseClient, signer, interceptor, "")
 
 		err = configureCustomTransport(c.logger, &network.BaseClient)
 		if err != nil {
@@ -482,8 +499,12 @@ func (c *client) Identity(ociClientConfig *OCIClientConfig) IdentityInterface {
 			c.logger.Errorf("Failed to create Identity workload identity  %v", err)
 			return nil
 		}
-
-		setupBaseClient(c.logger, &identity.BaseClient, nil, nil, "")
+		signer := common.RequestSigner(configProvider, append(common.DefaultGenericHeaders(), "x-cross-tenancy-request"), common.DefaultBodyHeaders())
+		interceptor := func(r *http.Request) error {
+			r.Header.Set("x-cross-tenancy-request", ociClientConfig.TenancyId)
+			return nil
+		}
+		setupBaseClient(c.logger, &identity.BaseClient, signer, interceptor, "")
 
 		err = configureCustomTransport(c.logger, &identity.BaseClient)
 		if err != nil {
@@ -508,11 +529,11 @@ func (c *client) Identity(ociClientConfig *OCIClientConfig) IdentityInterface {
 
 		return &client{
 			//compartment: 	     &compartment,
-			identity:            &identity,
-			requestMetadata:     c.requestMetadata,
-			rateLimiter:         c.rateLimiter,
-			subnetCache:         cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
-			logger:              c.logger,
+			identity:        &identity,
+			requestMetadata: c.requestMetadata,
+			rateLimiter:     c.rateLimiter,
+			subnetCache:     cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
+			logger:          c.logger,
 		}
 	}
 	return c
@@ -536,7 +557,12 @@ func (c *client) FSS(ociClientConfig *OCIClientConfig) FileStorageInterface {
 			return nil
 		}
 
-		setupBaseClient(c.logger, &fc.BaseClient, nil, nil, "")
+		signer := common.RequestSigner(configProvider, append(common.DefaultGenericHeaders(), "x-cross-tenancy-request"), common.DefaultBodyHeaders())
+		interceptor := func(r *http.Request) error {
+			r.Header.Set("x-cross-tenancy-request", ociClientConfig.TenancyId)
+			return nil
+		}
+		setupBaseClient(c.logger, &fc.BaseClient, signer, interceptor, "")
 
 		err = configureCustomTransport(c.logger, &fc.BaseClient)
 		if err != nil {
