@@ -76,6 +76,9 @@ func ValidateConfig(c *Config) field.ErrorList {
 	if c.UseInstancePrincipals && c.UseWorkloadIdentity {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("useWorkloadIdentity"), c.UseWorkloadIdentity, "useInstancePrincipals and useWorkloadIdentity cannot both be true"))
 	}
+	if c.UseWorkloadIdentity && !c.UseInstancePrincipals && len(c.Auth.Region) == 0 {
+		allErrs = append(allErrs, field.InternalError(field.NewPath("auth", "region"), errors.New("This value is required when useWorkloadIdentity is enabled. Continue checking the logs to see if something else is wrong")))
+	}
 	if len(c.CompartmentID) == 0 {
 		allErrs = append(allErrs, field.InternalError(field.NewPath("compartment"), errors.New("This value is normally discovered automatically if omitted. Continue checking the logs to see if something else is wrong")))
 	}

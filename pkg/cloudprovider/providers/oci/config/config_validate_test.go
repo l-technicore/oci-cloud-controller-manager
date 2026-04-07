@@ -72,6 +72,7 @@ func TestValidateConfig(t *testing.T) {
 				Auth: AuthConfig{
 					metadataSvc: metadata.NewMock(&metadata.InstanceMetadata{CompartmentID: "compartment"}),
 					TenancyID:   "not empty",
+					Region:      "us-phoenix-1",
 				},
 				UseWorkloadIdentity: true,
 				LoadBalancer: &LoadBalancerConfig{
@@ -80,6 +81,32 @@ func TestValidateConfig(t *testing.T) {
 				},
 			},
 			errs: field.ErrorList{},
+		},
+		{
+			name: "invalid with workload identity enabled and missing region",
+			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
+				Auth: AuthConfig{
+					metadataSvc: metadata.NewErrorMock(),
+				},
+				UseWorkloadIdentity: true,
+				LoadBalancer: &LoadBalancerConfig{
+					Subnet1: "ocid1.tenancy.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				},
+			},
+			errs: field.ErrorList{
+				&field.Error{
+					Type:   field.ErrorTypeInternal,
+					Field:  "auth.region",
+					Detail: "This value is required when useWorkloadIdentity is enabled. Continue checking the logs to see if something else is wrong",
+				},
+				&field.Error{
+					Type:   field.ErrorTypeInternal,
+					Field:  "compartment",
+					Detail: "This value is normally discovered automatically if omitted. Continue checking the logs to see if something else is wrong",
+				},
+			},
 		},
 		{
 			name: "invalid when both instance principals and workload identity enabled",
