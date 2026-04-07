@@ -73,10 +73,13 @@ func validateLoadBalancerConfig(c *Config, fldPath *field.Path) field.ErrorList 
 // ValidateConfig validates the OCI Cloud Provider config file.
 func ValidateConfig(c *Config) field.ErrorList {
 	allErrs := field.ErrorList{}
+	if c.UseInstancePrincipals && c.UseWorkloadIdentity {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("useWorkloadIdentity"), c.UseWorkloadIdentity, "useInstancePrincipals and useWorkloadIdentity cannot both be true"))
+	}
 	if len(c.CompartmentID) == 0 {
 		allErrs = append(allErrs, field.InternalError(field.NewPath("compartment"), errors.New("This value is normally discovered automatically if omitted. Continue checking the logs to see if something else is wrong")))
 	}
-	if !c.UseInstancePrincipals {
+	if !c.UseInstancePrincipals && !c.UseWorkloadIdentity {
 		allErrs = append(allErrs, validateAuthConfig(&c.Auth, field.NewPath("auth"))...)
 	}
 	if c.LoadBalancer != nil && !c.LoadBalancer.Disabled {

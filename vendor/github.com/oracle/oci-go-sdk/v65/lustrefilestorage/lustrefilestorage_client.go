@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -92,6 +92,10 @@ func (client *LustreFileStorageClient) ConfigurationProvider() *common.Configura
 }
 
 // CancelWorkRequest Cancels a work request.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/CancelWorkRequest.go.html to see an example of how to use CancelWorkRequest API.
 // A default retry strategy applies to this operation CancelWorkRequest()
 func (client LustreFileStorageClient) CancelWorkRequest(ctx context.Context, request CancelWorkRequestRequest) (response CancelWorkRequestResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -147,6 +151,10 @@ func (client LustreFileStorageClient) cancelWorkRequest(ctx context.Context, req
 
 // ChangeLustreFileSystemCompartment Moves a Lustre file system into a different compartment within the same tenancy. For information about moving resources between
 // compartments, see Moving Resources to a Different Compartment (https://docs.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ChangeLustreFileSystemCompartment.go.html to see an example of how to use ChangeLustreFileSystemCompartment API.
 // A default retry strategy applies to this operation ChangeLustreFileSystemCompartment()
 func (client LustreFileStorageClient) ChangeLustreFileSystemCompartment(ctx context.Context, request ChangeLustreFileSystemCompartmentRequest) (response ChangeLustreFileSystemCompartmentResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -202,6 +210,10 @@ func (client LustreFileStorageClient) changeLustreFileSystemCompartment(ctx cont
 
 // ChangeObjectStorageLinkCompartment Moves an Object Storage link into a different compartment within the same tenancy. For information about moving resources between
 // compartments, see Moving Resources to a Different Compartment (https://docs.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ChangeObjectStorageLinkCompartment.go.html to see an example of how to use ChangeObjectStorageLinkCompartment API.
 // A default retry strategy applies to this operation ChangeObjectStorageLinkCompartment()
 func (client LustreFileStorageClient) ChangeObjectStorageLinkCompartment(ctx context.Context, request ChangeObjectStorageLinkCompartmentRequest) (response ChangeObjectStorageLinkCompartmentResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -261,6 +273,10 @@ func (client LustreFileStorageClient) changeObjectStorageLinkCompartment(ctx con
 }
 
 // CreateLustreFileSystem Creates a Lustre file system.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/CreateLustreFileSystem.go.html to see an example of how to use CreateLustreFileSystem API.
 // A default retry strategy applies to this operation CreateLustreFileSystem()
 func (client LustreFileStorageClient) CreateLustreFileSystem(ctx context.Context, request CreateLustreFileSystemRequest) (response CreateLustreFileSystemResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -320,6 +336,10 @@ func (client LustreFileStorageClient) createLustreFileSystem(ctx context.Context
 }
 
 // CreateObjectStorageLink Creates an Object Storage link.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/CreateObjectStorageLink.go.html to see an example of how to use CreateObjectStorageLink API.
 // A default retry strategy applies to this operation CreateObjectStorageLink()
 func (client LustreFileStorageClient) CreateObjectStorageLink(ctx context.Context, request CreateObjectStorageLinkRequest) (response CreateObjectStorageLinkResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -379,6 +399,10 @@ func (client LustreFileStorageClient) createObjectStorageLink(ctx context.Contex
 }
 
 // DeleteLustreFileSystem Deletes a Lustre file system.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/DeleteLustreFileSystem.go.html to see an example of how to use DeleteLustreFileSystem API.
 // A default retry strategy applies to this operation DeleteLustreFileSystem()
 func (client LustreFileStorageClient) DeleteLustreFileSystem(ctx context.Context, request DeleteLustreFileSystemRequest) (response DeleteLustreFileSystemResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -433,6 +457,10 @@ func (client LustreFileStorageClient) deleteLustreFileSystem(ctx context.Context
 }
 
 // DeleteObjectStorageLink Deletes an Object Storage link.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/DeleteObjectStorageLink.go.html to see an example of how to use DeleteObjectStorageLink API.
 // A default retry strategy applies to this operation DeleteObjectStorageLink()
 func (client LustreFileStorageClient) DeleteObjectStorageLink(ctx context.Context, request DeleteObjectStorageLinkRequest) (response DeleteObjectStorageLinkResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -487,6 +515,10 @@ func (client LustreFileStorageClient) deleteObjectStorageLink(ctx context.Contex
 }
 
 // GetLustreFileSystem Gets information about a Lustre file system.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/GetLustreFileSystem.go.html to see an example of how to use GetLustreFileSystem API.
 // A default retry strategy applies to this operation GetLustreFileSystem()
 func (client LustreFileStorageClient) GetLustreFileSystem(ctx context.Context, request GetLustreFileSystemRequest) (response GetLustreFileSystemResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -541,6 +573,10 @@ func (client LustreFileStorageClient) getLustreFileSystem(ctx context.Context, r
 }
 
 // GetObjectStorageLink Gets information about an Object Storage link.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/GetObjectStorageLink.go.html to see an example of how to use GetObjectStorageLink API.
 // A default retry strategy applies to this operation GetObjectStorageLink()
 func (client LustreFileStorageClient) GetObjectStorageLink(ctx context.Context, request GetObjectStorageLinkRequest) (response GetObjectStorageLinkResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -595,6 +631,10 @@ func (client LustreFileStorageClient) getObjectStorageLink(ctx context.Context, 
 }
 
 // GetSyncJob Gets details of a sync job associated with an Object Storage link when `objectStorageLink` and a unique ID are provided.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/GetSyncJob.go.html to see an example of how to use GetSyncJob API.
 // A default retry strategy applies to this operation GetSyncJob()
 func (client LustreFileStorageClient) GetSyncJob(ctx context.Context, request GetSyncJobRequest) (response GetSyncJobResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -649,6 +689,10 @@ func (client LustreFileStorageClient) getSyncJob(ctx context.Context, request co
 }
 
 // GetWorkRequest Gets the details of a work request.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/GetWorkRequest.go.html to see an example of how to use GetWorkRequest API.
 // A default retry strategy applies to this operation GetWorkRequest()
 func (client LustreFileStorageClient) GetWorkRequest(ctx context.Context, request GetWorkRequestRequest) (response GetWorkRequestResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -702,7 +746,127 @@ func (client LustreFileStorageClient) getWorkRequest(ctx context.Context, reques
 	return response, err
 }
 
+// ListAvailableMaintenanceScheduleStartTimes Gets the list of available maintenance schedule start times for both Create and Update operation
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ListAvailableMaintenanceScheduleStartTimes.go.html to see an example of how to use ListAvailableMaintenanceScheduleStartTimes API.
+// A default retry strategy applies to this operation ListAvailableMaintenanceScheduleStartTimes()
+func (client LustreFileStorageClient) ListAvailableMaintenanceScheduleStartTimes(ctx context.Context, request ListAvailableMaintenanceScheduleStartTimesRequest) (response ListAvailableMaintenanceScheduleStartTimesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.DefaultRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listAvailableMaintenanceScheduleStartTimes, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = ListAvailableMaintenanceScheduleStartTimesResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = ListAvailableMaintenanceScheduleStartTimesResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListAvailableMaintenanceScheduleStartTimesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListAvailableMaintenanceScheduleStartTimesResponse")
+	}
+	return
+}
+
+// listAvailableMaintenanceScheduleStartTimes implements the OCIOperation interface (enables retrying operations)
+func (client LustreFileStorageClient) listAvailableMaintenanceScheduleStartTimes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/availableMaintenanceScheduleStartTimes", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListAvailableMaintenanceScheduleStartTimesResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/lustre/20250228/AvailableMaintenanceScheduleStartTimeCollection/ListAvailableMaintenanceScheduleStartTimes"
+		err = common.PostProcessServiceError(err, "LustreFileStorage", "ListAvailableMaintenanceScheduleStartTimes", apiReferenceLink)
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListAvailableOverrideMaintenanceStartTimes Gets the list of available maintenance start times for Override operation
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ListAvailableOverrideMaintenanceStartTimes.go.html to see an example of how to use ListAvailableOverrideMaintenanceStartTimes API.
+// A default retry strategy applies to this operation ListAvailableOverrideMaintenanceStartTimes()
+func (client LustreFileStorageClient) ListAvailableOverrideMaintenanceStartTimes(ctx context.Context, request ListAvailableOverrideMaintenanceStartTimesRequest) (response ListAvailableOverrideMaintenanceStartTimesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.DefaultRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listAvailableOverrideMaintenanceStartTimes, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = ListAvailableOverrideMaintenanceStartTimesResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = ListAvailableOverrideMaintenanceStartTimesResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListAvailableOverrideMaintenanceStartTimesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListAvailableOverrideMaintenanceStartTimesResponse")
+	}
+	return
+}
+
+// listAvailableOverrideMaintenanceStartTimes implements the OCIOperation interface (enables retrying operations)
+func (client LustreFileStorageClient) listAvailableOverrideMaintenanceStartTimes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/availableOverrideMaintenanceStartTimes", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListAvailableOverrideMaintenanceStartTimesResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/lustre/20250228/AvailableOverrideMaintenanceStartTimeCollection/ListAvailableOverrideMaintenanceStartTimes"
+		err = common.PostProcessServiceError(err, "LustreFileStorage", "ListAvailableOverrideMaintenanceStartTimes", apiReferenceLink)
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // ListLustreFileSystems Gets a list of Lustre file systems.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ListLustreFileSystems.go.html to see an example of how to use ListLustreFileSystems API.
 // A default retry strategy applies to this operation ListLustreFileSystems()
 func (client LustreFileStorageClient) ListLustreFileSystems(ctx context.Context, request ListLustreFileSystemsRequest) (response ListLustreFileSystemsResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -757,6 +921,10 @@ func (client LustreFileStorageClient) listLustreFileSystems(ctx context.Context,
 }
 
 // ListObjectStorageLinks Gets a list of Object Storage links.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ListObjectStorageLinks.go.html to see an example of how to use ListObjectStorageLinks API.
 // A default retry strategy applies to this operation ListObjectStorageLinks()
 func (client LustreFileStorageClient) ListObjectStorageLinks(ctx context.Context, request ListObjectStorageLinksRequest) (response ListObjectStorageLinksResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -811,6 +979,10 @@ func (client LustreFileStorageClient) listObjectStorageLinks(ctx context.Context
 }
 
 // ListSyncJobs Lists all sync jobs associated with the Object Storage link. Contains a unique ID for each sync job.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ListSyncJobs.go.html to see an example of how to use ListSyncJobs API.
 // A default retry strategy applies to this operation ListSyncJobs()
 func (client LustreFileStorageClient) ListSyncJobs(ctx context.Context, request ListSyncJobsRequest) (response ListSyncJobsResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -865,6 +1037,10 @@ func (client LustreFileStorageClient) listSyncJobs(ctx context.Context, request 
 }
 
 // ListWorkRequestErrors Lists the errors for a work request.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ListWorkRequestErrors.go.html to see an example of how to use ListWorkRequestErrors API.
 // A default retry strategy applies to this operation ListWorkRequestErrors()
 func (client LustreFileStorageClient) ListWorkRequestErrors(ctx context.Context, request ListWorkRequestErrorsRequest) (response ListWorkRequestErrorsResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -919,6 +1095,10 @@ func (client LustreFileStorageClient) listWorkRequestErrors(ctx context.Context,
 }
 
 // ListWorkRequestLogs Lists the logs for a work request.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ListWorkRequestLogs.go.html to see an example of how to use ListWorkRequestLogs API.
 // A default retry strategy applies to this operation ListWorkRequestLogs()
 func (client LustreFileStorageClient) ListWorkRequestLogs(ctx context.Context, request ListWorkRequestLogsRequest) (response ListWorkRequestLogsResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -973,6 +1153,10 @@ func (client LustreFileStorageClient) listWorkRequestLogs(ctx context.Context, r
 }
 
 // ListWorkRequests Lists the work requests in a compartment.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ListWorkRequests.go.html to see an example of how to use ListWorkRequests API.
 // A default retry strategy applies to this operation ListWorkRequests()
 func (client LustreFileStorageClient) ListWorkRequests(ctx context.Context, request ListWorkRequestsRequest) (response ListWorkRequestsResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -1026,10 +1210,13 @@ func (client LustreFileStorageClient) listWorkRequests(ctx context.Context, requ
 	return response, err
 }
 
-// PauseSyncJob Pauses the object sync job in progress. The object sync job can either have Object Storage or Lustre File
-// System as either source or target.
-// A default retry strategy applies to this operation PauseSyncJob()
-func (client LustreFileStorageClient) PauseSyncJob(ctx context.Context, request PauseSyncJobRequest) (response PauseSyncJobResponse, err error) {
+// OverrideMaintenance Overrides the upcoming maintenance to the value provided by user
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/OverrideMaintenance.go.html to see an example of how to use OverrideMaintenance API.
+// A default retry strategy applies to this operation OverrideMaintenance()
+func (client LustreFileStorageClient) OverrideMaintenance(ctx context.Context, request OverrideMaintenanceRequest) (response OverrideMaintenanceResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.DefaultRetryPolicy()
 	if client.RetryPolicy() != nil {
@@ -1038,47 +1225,42 @@ func (client LustreFileStorageClient) PauseSyncJob(ctx context.Context, request 
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
-
-	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
-		request.OpcRetryToken = common.String(common.RetryToken())
-	}
-
-	ociResponse, err = common.Retry(ctx, request, client.pauseSyncJob, policy)
+	ociResponse, err = common.Retry(ctx, request, client.overrideMaintenance, policy)
 	if err != nil {
 		if ociResponse != nil {
 			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
 				opcRequestId := httpResponse.Header.Get("opc-request-id")
-				response = PauseSyncJobResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+				response = OverrideMaintenanceResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
 			} else {
-				response = PauseSyncJobResponse{}
+				response = OverrideMaintenanceResponse{}
 			}
 		}
 		return
 	}
-	if convertedResponse, ok := ociResponse.(PauseSyncJobResponse); ok {
+	if convertedResponse, ok := ociResponse.(OverrideMaintenanceResponse); ok {
 		response = convertedResponse
 	} else {
-		err = fmt.Errorf("failed to convert OCIResponse into PauseSyncJobResponse")
+		err = fmt.Errorf("failed to convert OCIResponse into OverrideMaintenanceResponse")
 	}
 	return
 }
 
-// pauseSyncJob implements the OCIOperation interface (enables retrying operations)
-func (client LustreFileStorageClient) pauseSyncJob(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+// overrideMaintenance implements the OCIOperation interface (enables retrying operations)
+func (client LustreFileStorageClient) overrideMaintenance(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
 
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/objectStorageLinks/{objectStorageLinkId}/actions/pauseSyncJob", binaryReqBody, extraHeaders)
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/lustreFileSystems/{lustreFileSystemId}/actions/overrideMaintenance", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
-	var response PauseSyncJobResponse
+	var response OverrideMaintenanceResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
 	response.RawResponse = httpResponse
 	if err != nil {
-		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/lustre/20250228/ObjectStorageLink/PauseSyncJob"
-		err = common.PostProcessServiceError(err, "LustreFileStorage", "PauseSyncJob", apiReferenceLink)
+		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/lustre/20250228/LustreFileSystem/OverrideMaintenance"
+		err = common.PostProcessServiceError(err, "LustreFileStorage", "OverrideMaintenance", apiReferenceLink)
 		return response, err
 	}
 
@@ -1088,6 +1270,10 @@ func (client LustreFileStorageClient) pauseSyncJob(ctx context.Context, request 
 
 // StartExportToObject Starts the export of data from the Lustre file system to Object Storage.
 // The Lustre file system path and Object Storage object prefix are defined in the Object Storage link resource.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/StartExportToObject.go.html to see an example of how to use StartExportToObject API.
 // A default retry strategy applies to this operation StartExportToObject()
 func (client LustreFileStorageClient) StartExportToObject(ctx context.Context, request StartExportToObjectRequest) (response StartExportToObjectResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -1148,6 +1334,10 @@ func (client LustreFileStorageClient) startExportToObject(ctx context.Context, r
 
 // StartImportFromObject Starts the import of data from Object Storage to the Lustre file system.
 // The Lustre file system path and Object Storage object prefix are defined in the Object Storage link resource.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/StartImportFromObject.go.html to see an example of how to use StartImportFromObject API.
 // A default retry strategy applies to this operation StartImportFromObject()
 func (client LustreFileStorageClient) StartImportFromObject(ctx context.Context, request StartImportFromObjectRequest) (response StartImportFromObjectResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -1208,6 +1398,10 @@ func (client LustreFileStorageClient) startImportFromObject(ctx context.Context,
 
 // StopExportToObject Stops the export of data from the Lustre file system to Object Storage.
 // The Lustre file system path and Object Storage object prefix are defined in the Object Storage link resource.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/StopExportToObject.go.html to see an example of how to use StopExportToObject API.
 // A default retry strategy applies to this operation StopExportToObject()
 func (client LustreFileStorageClient) StopExportToObject(ctx context.Context, request StopExportToObjectRequest) (response StopExportToObjectResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -1268,6 +1462,10 @@ func (client LustreFileStorageClient) stopExportToObject(ctx context.Context, re
 
 // StopImportFromObject Stops the import of data from Object Storage to the Lustre file system.
 // The Lustre file system path and Object Storage object prefix are defined in the Object Storage link resource.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/StopImportFromObject.go.html to see an example of how to use StopImportFromObject API.
 // A default retry strategy applies to this operation StopImportFromObject()
 func (client LustreFileStorageClient) StopImportFromObject(ctx context.Context, request StopImportFromObjectRequest) (response StopImportFromObjectResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -1326,67 +1524,11 @@ func (client LustreFileStorageClient) stopImportFromObject(ctx context.Context, 
 	return response, err
 }
 
-// UnpauseSyncJob Unpauses the object sync job in progress. The object sync job can either have Object Storage or Lustre File
-// System as either source or target.
-// A default retry strategy applies to this operation UnpauseSyncJob()
-func (client LustreFileStorageClient) UnpauseSyncJob(ctx context.Context, request UnpauseSyncJobRequest) (response UnpauseSyncJobResponse, err error) {
-	var ociResponse common.OCIResponse
-	policy := common.DefaultRetryPolicy()
-	if client.RetryPolicy() != nil {
-		policy = *client.RetryPolicy()
-	}
-	if request.RetryPolicy() != nil {
-		policy = *request.RetryPolicy()
-	}
-
-	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
-		request.OpcRetryToken = common.String(common.RetryToken())
-	}
-
-	ociResponse, err = common.Retry(ctx, request, client.unpauseSyncJob, policy)
-	if err != nil {
-		if ociResponse != nil {
-			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
-				opcRequestId := httpResponse.Header.Get("opc-request-id")
-				response = UnpauseSyncJobResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
-			} else {
-				response = UnpauseSyncJobResponse{}
-			}
-		}
-		return
-	}
-	if convertedResponse, ok := ociResponse.(UnpauseSyncJobResponse); ok {
-		response = convertedResponse
-	} else {
-		err = fmt.Errorf("failed to convert OCIResponse into UnpauseSyncJobResponse")
-	}
-	return
-}
-
-// unpauseSyncJob implements the OCIOperation interface (enables retrying operations)
-func (client LustreFileStorageClient) unpauseSyncJob(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
-
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/objectStorageLinks/{objectStorageLinkId}/actions/unpauseSyncJob", binaryReqBody, extraHeaders)
-	if err != nil {
-		return nil, err
-	}
-
-	var response UnpauseSyncJobResponse
-	var httpResponse *http.Response
-	httpResponse, err = client.Call(ctx, &httpRequest)
-	defer common.CloseBodyIfValid(httpResponse)
-	response.RawResponse = httpResponse
-	if err != nil {
-		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/lustre/20250228/ObjectStorageLink/UnpauseSyncJob"
-		err = common.PostProcessServiceError(err, "LustreFileStorage", "UnpauseSyncJob", apiReferenceLink)
-		return response, err
-	}
-
-	err = common.UnmarshalResponse(httpResponse, &response)
-	return response, err
-}
-
 // UpdateLustreFileSystem Updates a Lustre file system.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/UpdateLustreFileSystem.go.html to see an example of how to use UpdateLustreFileSystem API.
 // A default retry strategy applies to this operation UpdateLustreFileSystem()
 func (client LustreFileStorageClient) UpdateLustreFileSystem(ctx context.Context, request UpdateLustreFileSystemRequest) (response UpdateLustreFileSystemResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -1441,6 +1583,10 @@ func (client LustreFileStorageClient) updateLustreFileSystem(ctx context.Context
 }
 
 // UpdateObjectStorageLink Updates an Object Storage link.
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/UpdateObjectStorageLink.go.html to see an example of how to use UpdateObjectStorageLink API.
 // A default retry strategy applies to this operation UpdateObjectStorageLink()
 func (client LustreFileStorageClient) UpdateObjectStorageLink(ctx context.Context, request UpdateObjectStorageLinkRequest) (response UpdateObjectStorageLinkResponse, err error) {
 	var ociResponse common.OCIResponse
